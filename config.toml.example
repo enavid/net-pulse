@@ -4,56 +4,53 @@
 
 [panel]
 host = "127.0.0.1"
-port = 10909
+port = 7070
 secret_key = "change-me-to-a-random-string"
 
 [scheduler]
-# Variance applied to each agent's daily limit (0.20 = ±20%)
 daily_variance = 0.20
-
-# Activity weights per 6-hour window [00-06, 06-12, 12-18, 18-24]
 schedule_weights = [0.05, 0.30, 0.35, 0.30]
 
 [download]
-# Speed cap per download in bytes/sec (0 = unlimited). Example: 5242880 = 5 MB/s
-speed_cap = 5242880
-
-# Probability of a random mid-download pause [0.0 – 1.0]
+speed_cap = 5242880          # 5 MB/s per download (0 = unlimited)
 pause_probability = 0.3
-
-# Pause duration range in seconds [min, max]
 pause_range = [10, 90]
-
-# Max concurrent downloads per agent
 max_concurrent = 2
 
 [network]
-# Set to false if VPN servers use self-signed SSL certificates
-verify_ssl = false
+verify_ssl = false           # false for self-signed certificates
 
 [logging]
 level = "INFO"
 file = "logs/netpulse.log"
 
-# ── Metric Servers only ─────────────────────────────────────
-[[metric_only]]
-label = "monitor1"
-metric_url = "https://5.x.x.x/your-token"
-
-# ── Download Sources (VPN servers) ────────────────────
-# Each source has a label, a download URL, and a metric URL.
+# ── Download Sources (VPN servers) ────────────────────────────────────────────
+# monthly_limit_gb  : total monthly quota for this server
+# usage_quota_pct   : fraction allowed for downloads (0.6 = 60%)
+# The system will prioritise servers with the most remaining quota.
 
 [[sources]]
 label = "server1"
-download_url = "https://IP_SERVER_1:PORT/1gb.zip"
-metric_url = "https://IP_SERVER_1:PORT/your-metric-token-here"
+download_url = "https://192.168.1.100/files/1gb.zip"
+metric_url = "https://192.168.1.100/your-metric-token-here"
+monthly_limit_gb = 100.0
+usage_quota_pct = 0.60       # use at most 60 GB this month
 
 [[sources]]
 label = "server2"
-download_url = "https://IP_SERVER_2:PORT/files/1gb.zip"
-metric_url = "https://IP_SERVER_2:PORT/your-metric-token-here"
+download_url = "https://192.168.1.200/files/1gb.zip"
+metric_url = "https://192.168.1.200/your-metric-token-here"
+monthly_limit_gb = 200.0
+usage_quota_pct = 0.60
 
-# ── Agent Servers ─────────────────────────────────────
+# ── Monitor-only Sources ──────────────────────────────────────────────────────
+# These servers are monitored for metrics but never used for downloads.
+
+[[monitors]]
+label = "monitor1"
+metric_url = "https:/192.168.1/your-metric-token-here"
+
+# ── Agent Servers ─────────────────────────────────────────────────────────────
 # Use host = "localhost" to make the coordinator itself act as an agent.
 
 [[agents]]

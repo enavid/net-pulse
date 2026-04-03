@@ -1,13 +1,13 @@
 """
-    src/config.py – Load and validate all settings from config.toml.
+src/config.py – Load and validate all settings from config.toml.
 """
 
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
 
 _CONFIG_FILE = Path("config.toml")
 
@@ -15,15 +15,22 @@ _CONFIG_FILE = Path("config.toml")
 # Dataclasses
 
 @dataclass
-class MonitorSource:
-    label: str
-    metric_url: str
-
-
-@dataclass
 class DownloadSource:
     label: str
     download_url: str
+    metric_url: str
+    monthly_limit_gb: float      # total monthly quota for this server
+    usage_quota_pct: float       # fraction of quota allowed for downloads (0.0–1.0)
+
+    @property
+    def monthly_allowed_gb(self) -> float:
+        return self.monthly_limit_gb * self.usage_quota_pct
+
+
+@dataclass
+class MonitorSource:
+    """Metric-only source — no downloads, just monitoring."""
+    label: str
     metric_url: str
 
 
@@ -50,8 +57,8 @@ class Config:
 
     # Sources & agents
     download_sources: List[DownloadSource]
-    agents: List[AgentConfig]
     monitors: List[MonitorSource]
+    agents: List[AgentConfig]
 
     # Scheduler
     daily_variance: float
@@ -74,9 +81,8 @@ class Config:
 # Loader
 
 def _load_toml(path: Path) -> dict:
-    """Load TOML using built-in tomllib (Python 3.11+) or tomli fallback."""
     try:
-        import tomllib  # type: ignore  # Python 3.11+
+        import tomllib  # type: ignore
         with open(path, "rb") as fh:
             return tomllib.load(fh)
     except ImportError:
@@ -93,7 +99,6 @@ def _load_toml(path: Path) -> dict:
 def load_config(path: Path = _CONFIG_FILE) -> Config:
     if not path.exists():
         print(f"[ERROR] Config file not found: {path}")
-        print("        Copy config.toml to the project root and edit it.")
         sys.exit(1)
 
     data = _load_toml(path)
@@ -109,8 +114,15 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
             label=s["label"],
             download_url=s["download_url"],
             metric_url=s["metric_url"],
+            monthly_limit_gb=float(s.get("monthly_limit_gb", 0.0)),
+            usage_quota_pct=float(s.get("usage_quota_pct", 1.0)),
         )
         for s in data.get("sources", [])
+    ]
+
+    monitors = [
+        MonitorSource(label=m["label"], metric_url=m["metric_url"])
+        for m in data.get("monitors", [])
     ]
 
     agents = [
@@ -125,11 +137,6 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         for a in data.get("agents", [])
     ]
 
-    monitors = [
-        MonitorSource(label=m["label"], metric_url=m["metric_url"])
-        for m in data.get("metric_only", [])
-    ]
-
     pause_range = dl.get("pause_range", [10, 90])
     weights     = sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])
 
@@ -138,8 +145,8 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         panel_port=int(panel.get("port", 7070)),
         secret_key=panel.get("secret_key", "change-me"),
         download_sources=sources,
-        agents=agents,
         monitors=monitors,
+        agents=agents,
         daily_variance=float(sched.get("daily_variance", 0.20)),
         schedule_weights=list(weights),
         download_speed_cap=int(dl.get("speed_cap", 5 * 1024 ** 2)),

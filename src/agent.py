@@ -1,9 +1,10 @@
 """
-    src/agent.py – SSH-based remote agent dispatcher.
+src/agent.py – SSH-based remote agent dispatcher.
 
-    For each remote agent, opens a short-lived SSH connection, runs a
-    wget/curl command to download the file, then closes the connection.
-    The coordinator itself (localhost) is handled by the local downloader.
+Each agent:
+  1. Builds a download plan (event times + sources).
+  2. Persists the plan to SQLite.
+  3. Executes each event, updating status in DB and in-memory state.
 """
 
 from __future__ import annotations
@@ -11,10 +12,12 @@ from __future__ import annotations
 
 import time
 import random
-import asyncssh
 import asyncio
+import asyncssh
 from typing import List
+from src import storage
 from src.state import State
+from datetime import datetime
 from src.logger import get_logger
 from src.downloader import download_file, DownloadResult
 from src.config import AgentConfig, Config, DownloadSource
@@ -27,10 +30,6 @@ log = get_logger("agent")
 # Connection test
 
 async def test_agent_connection(agent: AgentConfig) -> tuple[bool, str]:
-    """
-        Try to open and immediately close an SSH connection.
-        Returns (success, message).
-    """
     if agent.is_local:
         return True, "localhost – no SSH needed"
     try:
@@ -56,19 +55,18 @@ async def _run_remote_download(
     pause_probability: float,
     pause_range: tuple[int, int],
     verify_ssl: bool,
+    file_size_bytes: int = 1 * 1024 ** 3,
 ) -> DownloadResult:
     result = DownloadResult(url=url, agent_label=agent.label)
     start = time.monotonic()
 
-    # Build wget command with speed limit
     speed_arg = f"--limit-rate={speed_cap // 1024}k" if speed_cap > 0 else ""
-    no_check = "--no-check-certificate" if not verify_ssl else ""
+    no_check  = "--no-check-certificate" if not verify_ssl else ""
     cmd = f"wget -q {speed_arg} {no_check} -O /dev/null '{url}' && echo OK"
 
     log.info("SSH download starting | agent=%s | host=%s | url=%s", agent.label, agent.host, url)
 
     try:
-        # Optional: simulate pause before connecting
         if random.random() < pause_probability:
             secs = random.randint(*pause_range)
             log.debug("Pre-download pause | agent=%s | secs=%d", agent.label, secs)
@@ -85,13 +83,9 @@ async def _run_remote_download(
             proc = await conn.run(cmd, timeout=3600)
             if proc.returncode == 0:
                 result.success = True
-                # Estimate bytes from the URL size hint (best effort)
-                result.bytes_downloaded = 1 * 1024 ** 3  # 1 GB default assumption
+                result.bytes_downloaded = file_size_bytes
                 result.duration_seconds = time.monotonic() - start
-                log.info(
-                    "SSH download complete | agent=%s | duration=%.1fs",
-                    agent.label, result.duration_seconds,
-                )
+                log.info("SSH download complete | agent=%s | duration=%.1fs", agent.label, result.duration_seconds)
             else:
                 result.error = proc.stderr.strip() or f"exit code {proc.returncode}"
                 result.duration_seconds = time.monotonic() - start
@@ -107,30 +101,55 @@ async def _run_remote_download(
 # Agent runner
 
 async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Config, state: State) -> None:
-    """
-        Plan and execute all downloads for one agent over 24 hours.
-    """
-    variance = 1.0 + random.uniform(-cfg.daily_variance, cfg.daily_variance)
-    target_bytes = int(agent.daily_limit_gb * 1024 ** 3 * variance)
-    approx_file_size = 1 * 1024 ** 3  # 1 GB per download
-    n_events = max(1, round(target_bytes / approx_file_size))
+    if not sources:
+        log.warning("No sources available | agent=%s", agent.label)
+        return
 
-    log.info(
-        "Agent plan | agent=%s | target_gb=%.2f | events=%d",
-        agent.label, target_bytes / 1024 ** 3, n_events,
-    )
+    variance      = 1.0 + random.uniform(-cfg.daily_variance, cfg.daily_variance)
+    target_bytes  = int(agent.daily_limit_gb * 1024 ** 3 * variance)
+    approx_size   = 1 * 1024 ** 3
+    n_events      = max(1, round(target_bytes / approx_size))
+    today         = datetime.now().strftime("%Y-%m-%d")
 
-    event_times = generate_event_times(n_events, cfg.schedule_weights)
+    log.info("Agent plan | agent=%s | target_gb=%.2f | events=%d", agent.label, target_bytes / 1024 ** 3, n_events)
+
+    event_times   = generate_event_times(n_events, cfg.schedule_weights)
+    source_cycle  = [sources[i % len(sources)] for i in range(n_events)]
+
+    # Persist plan to SQLite
+    plan_rows = [
+        {
+            "date": today,
+            "agent_label": agent.label,
+            "source_label": source_cycle[i].label,
+            "scheduled_at": event_times[i].isoformat(),
+        }
+        for i in range(n_events)
+    ]
+    storage.insert_planned_events(plan_rows)
+
+    # Fetch the IDs just inserted so we can update them
+    db_events = storage.get_events_for_date(today)
+    # Map: (agent_label, scheduled_at) → id
+    event_id_map = {
+        (r["agent_label"], r["scheduled_at"]): r["id"]
+        for r in db_events
+        if r["agent_label"] == agent.label
+    }
+
     semaphore = asyncio.Semaphore(cfg.max_concurrent_downloads)
 
-    async def _job(event_time, source: DownloadSource):
+    async def _job(idx: int, event_time, source: DownloadSource):
+        event_id = event_id_map.get((agent.label, event_times[idx].isoformat()))
+
         wait = seconds_until(event_time)
         if wait > 0:
-            log.info(
-                "Download scheduled | agent=%s | source=%s | in=%.0fs",
-                agent.label, source.label, wait,
-            )
+            log.info("Download scheduled | agent=%s | source=%s | in=%.0fs", agent.label, source.label, wait)
             await asyncio.sleep(wait)
+
+        if event_id:
+            storage.update_event_status(event_id, "running")
+        state.load_plan_from_db()
 
         async with semaphore:
             if agent.is_local:
@@ -152,10 +171,17 @@ async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Conf
                     verify_ssl=cfg.verify_ssl,
                 )
 
-            state.record_download(agent.label, result.bytes_downloaded, result.success)
+        final_status = "done" if result.success else "failed"
+        if event_id:
+            storage.update_event_status(event_id, final_status, result.bytes_downloaded, result.error)
 
-    # Round-robin sources across events
-    source_cycle = [sources[i % len(sources)] for i in range(n_events)]
-    tasks = [_job(t, s) for t, s in zip(event_times, source_cycle)]
+        # Record in monthly usage only for successful downloads, keyed by source
+        if result.success:
+            storage.add_monthly_usage(source.label, result.bytes_downloaded)
+
+        state.record_download(agent.label, result.bytes_downloaded, result.success)
+        state.load_plan_from_db()
+
+    tasks = [_job(i, event_times[i], source_cycle[i]) for i in range(n_events)]
     await asyncio.gather(*tasks)
     log.info("Agent finished daily cycle | agent=%s", agent.label)

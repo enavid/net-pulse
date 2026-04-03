@@ -1,5 +1,5 @@
 """
-    src/state.py – Shared in-memory state for the coordinator. Persisted to JSON so the panel can read it without locks.
+    src/state.py – Shared in-memory state (daily cycle). SQLite handles long-term persistence via storage.py.
 """
 
 from __future__ import annotations
@@ -7,9 +7,8 @@ from __future__ import annotations
 import os
 import json
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from dataclasses import asdict, dataclass, field
-
 
 _STATE_FILE = "logs/state.json"
 
@@ -29,10 +28,23 @@ class AgentStats:
 
 
 @dataclass
+class PlannedEventView:
+    """Lightweight view of a planned event for the UI."""
+    id: int
+    agent_label: str
+    source_label: str
+    scheduled_at: str
+    status: str          # pending | running | done | failed
+    bytes_downloaded: int
+    error: Optional[str]
+
+
+@dataclass
 class State:
     date: str = ""
     started_at: str = ""
     agents: Dict[str, AgentStats] = field(default_factory=dict)
+    plan: List[PlannedEventView] = field(default_factory=list)
 
     def init(self, agent_configs) -> None:
         self.date = datetime.now().strftime("%Y-%m-%d")
@@ -40,6 +52,23 @@ class State:
         for a in agent_configs:
             self.agents[a.label] = AgentStats(label=a.label, daily_limit_gb=a.daily_limit_gb)
         self._save()
+
+    def load_plan_from_db(self) -> None:
+        """Reload today's plan from SQLite into memory for the UI."""
+        from . import storage
+        rows = storage.get_today_events()
+        self.plan = [
+            PlannedEventView(
+                id=r["id"],
+                agent_label=r["agent_label"],
+                source_label=r["source_label"],
+                scheduled_at=r["scheduled_at"],
+                status=r["status"],
+                bytes_downloaded=r["bytes_downloaded"],
+                error=r["error"],
+            )
+            for r in rows
+        ]
 
     def record_download(self, agent_label: str, bytes_dl: int, success: bool) -> None:
         if agent_label not in self.agents:
@@ -58,6 +87,7 @@ class State:
             "date": self.date,
             "started_at": self.started_at,
             "agents": {k: asdict(v) for k, v in self.agents.items()},
+            "plan": [asdict(e) for e in self.plan],
         }
 
     def _save(self) -> None:

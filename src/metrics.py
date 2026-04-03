@@ -1,17 +1,22 @@
 """
-    src/metrics.py – Fetch and parse VPN server metrics from the JSON endpoint.
+    src/metrics.py – Fetch and parse VPN/monitor server metrics. Works with both DownloadSource and MonitorSource.
 """
 
 from __future__ import annotations
 
 import httpx
 import asyncio
-from typing import Optional
 from src.logger import get_logger
 from dataclasses import dataclass
+from typing import List, Optional, Protocol
 
 
 log = get_logger("metrics")
+
+
+class HasMetricUrl(Protocol):
+    label: str
+    metric_url: str
 
 
 @dataclass
@@ -43,6 +48,6 @@ async def fetch_metric(label: str, url: str, verify_ssl: bool = False) -> Server
     return metric
 
 
-async def fetch_all_metrics(sources, verify_ssl=False):
+async def fetch_all_metrics(sources: List[HasMetricUrl], verify_ssl: bool = False) -> List[ServerMetric]:
     tasks = [fetch_metric(s.label, s.metric_url, verify_ssl) for s in sources]
     return await asyncio.gather(*tasks)
