@@ -40,7 +40,7 @@ async def test_agent_connection(agent: AgentConfig) -> tuple[bool, str]:
             username=agent.user,
             password=agent.password,
             known_hosts=None,
-            connect_timeout=10,
+            connect_timeout=60,
         ):
             return True, "SSH connection successful"
     except Exception as exc:
