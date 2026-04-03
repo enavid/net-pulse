@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────
+#  NetPulse – Configuration File
+# ─────────────────────────────────────────────────────
+
+[panel]
+host = "127.0.0.1"
+port = 10909
+secret_key = "change-me-to-a-random-string"
+
+[scheduler]
+# Variance applied to each agent's daily limit (0.20 = ±20%)
+daily_variance = 0.20
+
+# Activity weights per 6-hour window [00-06, 06-12, 12-18, 18-24]
+schedule_weights = [0.05, 0.30, 0.35, 0.30]
+
+[download]
+# Speed cap per download in bytes/sec (0 = unlimited). Example: 5242880 = 5 MB/s
+speed_cap = 5242880
+
+# Probability of a random mid-download pause [0.0 – 1.0]
+pause_probability = 0.3
+
+# Pause duration range in seconds [min, max]
+pause_range = [10, 90]
+
+# Max concurrent downloads per agent
+max_concurrent = 2
+
+[network]
+# Set to false if VPN servers use self-signed SSL certificates
+verify_ssl = false
+
+[logging]
+level = "INFO"
+file = "logs/netpulse.log"
+
+# ── Download Sources (VPN servers) ────────────────────
+# Each source has a label, a download URL, and a metric URL.
+
+[[sources]]
+label = "server1"
+download_url = "https://IP_SERVER_1:PORT/1gb.zip"
+metric_url = "https://IP_SERVER_1:PORT/your-metric-token-here"
+
+[[sources]]
+label = "server2"
+download_url = "https://IP_SERVER_2:PORT/files/1gb.zip"
+metric_url = "https://IP_SERVER_2:PORT/your-metric-token-here"
+
+# ── Agent Servers ─────────────────────────────────────
+# Use host = "localhost" to make the coordinator itself act as an agent.
+
+[[agents]]
+label = "self"
+host = "localhost"
+port = 0
+user = "local"
+password = "local"
+daily_limit_gb = 8.0
+
+[[agents]]
+label = "agent1"
+host = "192.168.1.10"
+port = 22
+user = "root"
+password = "secret"
+daily_limit_gb = 5.0
+
+[[agents]]
+label = "agent2"
+host = "192.168.1.11"
+port = 22
+user = "root"
+password = "secret"
+daily_limit_gb = 10.0

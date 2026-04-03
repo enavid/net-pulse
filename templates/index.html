@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetPulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #0f1318;
+    --border: #1e2530;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise texture overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--accent);
+    text-shadow: 0 0 24px rgba(0,229,255,0.3);
+  }
+
+  .logo span { color: var(--muted); font-weight: 400; font-size: 13px; font-family: var(--mono); margin-left: 10px; vertical-align: middle; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .clock { color: var(--muted); font-size: 12px; }
+
+  .badge {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-running { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+
+  /* ── Sections ── */
+  .section-title {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── Agent cards ── */
+  .agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    transition: border-color 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .agent-card:hover { border-color: var(--accent); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .agent-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+
+  .agent-label {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .agent-host { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  .conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .conn-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .conn-dot.fail { background: var(--red); }
+  .conn-dot.checking { background: var(--yellow); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  .progress-bar-wrap {
+    background: var(--border);
+    border-radius: 3px;
+    height: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    transition: width 0.6s ease;
+  }
+
+  .agent-stats { display: flex; gap: 18px; }
+
+  .stat { }
+  .stat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .stat-ok .stat-val { color: var(--green); }
+  .stat-fail .stat-val { color: var(--red); }
+
+  /* ── Ping button ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-accent {
+    background: rgba(0,229,255,0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Two-col layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Panel box ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  /* ── Metrics table ── */
+  .metrics-table { width: 100%; border-collapse: collapse; }
+  .metrics-table th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .metrics-table td {
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .metrics-table tr:last-child td { border-bottom: none; }
+  .metrics-table .up { color: var(--green); }
+  .metrics-table .down { color: var(--red); }
+  .rx { color: var(--accent); }
+  .tx { color: var(--accent2); }
+
+  /* ── Log viewer ── */
+  .log-box {
+    background: #060810;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    height: 280px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+
+  .log-box::-webkit-scrollbar { width: 4px; }
+  .log-box::-webkit-scrollbar-track { background: transparent; }
+  .log-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-line { white-space: pre-wrap; word-break: break-all; }
+  .log-line.info  { color: #94a3b8; }
+  .log-line.warn  { color: var(--yellow); }
+  .log-line.error { color: var(--red); }
+  .log-line.debug { color: #475569; }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+
+  /* ── Status strip ── */
+  .status-strip {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 24px;
+    font-size: 12px;
+  }
+  .status-item { display: flex; gap: 6px; align-items: center; }
+  .status-item .label { color: var(--muted); }
+  .status-item .value { color: var(--text); font-weight: 500; }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.active { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { color: var(--muted); font-size: 12px; padding: 12px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div>
+      <div class="logo">NetPulse <span>coordinator panel</span></div>
+    </div>
+    <div class="header-right">
+      <span class="clock" id="clock"></span>
+      <span class="badge badge-running">● running</span>
+    </div>
+  </header>
+
+  <!-- Status strip -->
+  <div class="status-strip" id="statusStrip">
+    <div class="status-item"><span class="label">Date</span><span class="value" id="sDate">—</span></div>
+    <div class="status-item"><span class="label">Started</span><span class="value" id="sStarted">—</span></div>
+    <div class="status-item"><span class="label">Total Downloaded</span><span class="value" id="sTotalDL">—</span></div>
+    <div class="status-item"><span class="label">Agents</span><span class="value" id="sAgents">—</span></div>
+    <div class="status-item"><span class="label">Sources</span><span class="value" id="sSources">—</span></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-accent" onclick="pingAgents()">
+      <span id="pingSpinner" class="spinner"></span>
+      ⚡ Test Agent Connections
+    </button>
+    <button class="btn" onclick="refreshMetrics()">↻ Refresh VPN Metrics</button>
+    <button class="btn" onclick="refreshAll()">↻ Refresh All</button>
+  </div>
+
+  <!-- Agent cards -->
+  <div class="section-title">Agents</div>
+  <div class="agents-grid" id="agentsGrid">
+    <div class="empty">Loading agents…</div>
+  </div>
+
+  <!-- VPN metrics + config -->
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="section-title" style="margin:0">VPN Server Metrics</div>
+        <div id="metricSpinner" class="spinner"></div>
+      </div>
+      <table class="metrics-table" id="metricsTable">
+        <thead><tr><th>Server</th><th>Status</th><th>RX (GB)</th><th>TX (GB)</th></tr></thead>
+        <tbody id="metricsBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="section-title" style="margin:0">Download Sources</div>
+      </div>
+      <table class="metrics-table" id="sourcesTable">
+        <thead><tr><th>Label</th><th>URL</th></tr></thead>
+        <tbody id="sourcesBody"><tr><td colspan="2" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Log viewer -->
+  <div class="panel-header" style="margin-bottom:10px">
+    <div class="section-title" style="margin:0">Live Logs</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="autoScrollChk" checked> auto-scroll
+    </label>
+  </div>
+  <div class="log-box" id="logBox"></div>
+
+</div>
+
+<script>
+// ── Clock ──────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function fmtBytes(b) {
+  if (b >= 1e9) return (b/1e9).toFixed(2) + ' GB';
+  if (b >= 1e6) return (b/1e6).toFixed(1) + ' MB';
+  return (b/1024).toFixed(0) + ' KB';
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return iso.replace('T',' ').slice(0,19);
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let pingResults = {};   // label → {ok, message}
+
+async function loadState() {
+  const r = await fetch('/api/state');
+  const d = await r.json();
+
+  document.getElementById('sDate').textContent = d.date || '—';
+  document.getElementById('sStarted').textContent = fmtTime(d.started_at);
+  document.getElementById('sAgents').textContent = Object.keys(d.agents||{}).length;
+
+  let total = 0;
+  Object.values(d.agents||{}).forEach(a => total += a.downloaded_bytes);
+  document.getElementById('sTotalDL').textContent = fmtBytes(total);
+
+  renderAgents(d.agents || {});
+}
+
+function renderAgents(agents) {
+  const grid = document.getElementById('agentsGrid');
+  if (!Object.keys(agents).length) { grid.innerHTML = '<div class="empty">No agents configured.</div>'; return; }
+
+  grid.innerHTML = Object.values(agents).map((a, i) => {
+    const limitBytes = a.daily_limit_gb * 1024**3;
+    const pct = limitBytes > 0 ? Math.min(100, a.downloaded_bytes / limitBytes * 100) : 0;
+    const ping = pingResults[a.label];
+    let dotClass = '';
+    if (ping !== undefined) dotClass = ping.ok ? 'ok' : 'fail';
+
+    return `
+    <div class="agent-card" style="animation-delay:${i*0.06}s">
+      <div class="agent-header">
+        <div>
+          <div class="agent-label">${a.label}</div>
+          <div class="agent-host">limit: ${a.daily_limit_gb} GB/day</div>
+          ${ping ? `<div class="agent-host" style="margin-top:3px;color:${ping.ok?'var(--green)':'var(--red)'}">${ping.message}</div>` : ''}
+        </div>
+        <div class="conn-dot ${dotClass}" title="${ping ? ping.message : 'Not tested yet'}"></div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" style="width:${pct}%"></div>
+      </div>
+      <div class="agent-stats">
+        <div class="stat">
+          <div class="stat-val">${fmtBytes(a.downloaded_bytes)}</div>
+          <div class="stat-label">Downloaded</div>
+        </div>
+        <div class="stat stat-ok">
+          <div class="stat-val">${a.downloads_ok}</div>
+          <div class="stat-label">OK</div>
+        </div>
+        <div class="stat stat-fail">
+          <div class="stat-val">${a.downloads_fail}</div>
+          <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">${pct.toFixed(1)}%</div>
+          <div class="stat-label">Progress</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Ping ───────────────────────────────────────────────────────────────────
+async function pingAgents() {
+  const sp = document.getElementById('pingSpinner');
+  sp.classList.add('active');
+  try {
+    const r = await fetch('/api/ping-agents');
+    const results = await r.json();
+    results.forEach(res => { pingResults[res.label] = {ok: res.ok, message: res.message}; });
+    await loadState();
+  } finally {
+    sp.classList.remove('active');
+  }
+}
+
+// ── Metrics ────────────────────────────────────────────────────────────────
+async function refreshMetrics() {
+  document.getElementById('metricSpinner').classList.add('active');
+  try {
+    const r = await fetch('/api/metrics');
+    const data = await r.json();
+    const tbody = document.getElementById('metricsBody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No sources configured.</td></tr>'; return; }
+    tbody.innerHTML = data.map(m => `
+      <tr>
+        <td>${m.label}</td>
+        <td class="${m.reachable ? 'up' : 'down'}">${m.reachable ? '● UP' : '✕ DOWN'}</td>
+        <td class="rx">${m.reachable ? m.rx_gb.toFixed(2) : '—'}</td>
+        <td class="tx">${m.reachable ? m.tx_gb.toFixed(2) : '—'}</td>
+      </tr>`).join('');
+  } finally {
+    document.getElementById('metricSpinner').classList.remove('active');
+  }
+}
+
+async function loadSources() {
+  const r = await fetch('/api/config');
+  const d = await r.json();
+  document.getElementById('sSources').textContent = (d.sources||[]).length;
+  const tbody = document.getElementById('sourcesBody');
+  if (!d.sources.length) { tbody.innerHTML = '<tr><td colspan="2" class="empty">No sources.</td></tr>'; return; }
+  tbody.innerHTML = d.sources.map(s => `
+    <tr>
+      <td>${s.label}</td>
+      <td style="color:var(--muted);font-size:11px;word-break:break-all">${s.download_url}</td>
+    </tr>`).join('');
+}
+
+// ── Logs ───────────────────────────────────────────────────────────────────
+let lastLogCount = 0;
+
+async function refreshLogs() {
+  const r = await fetch('/api/logs');
+  const d = await r.json();
+  const box = document.getElementById('logBox');
+  if (d.lines.length === lastLogCount) return;
+  lastLogCount = d.lines.length;
+
+  box.innerHTML = d.lines.map(line => {
+    let cls = 'info';
+    if (line.includes('| WARNING ')) cls = 'warn';
+    else if (line.includes('| ERROR ')) cls = 'error';
+    else if (line.includes('| DEBUG ')) cls = 'debug';
+    return `<div class="log-line ${cls}">${line}</div>`;
+  }).join('');
+
+  if (document.getElementById('autoScrollChk').checked) {
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+// ── Refresh all ────────────────────────────────────────────────────────────
+async function refreshAll() {
+  await Promise.all([loadState(), refreshMetrics(), loadSources(), refreshLogs()]);
+}
+
+// ── Init & intervals ───────────────────────────────────────────────────────
+refreshAll();
+setInterval(loadState, 10000);
+setInterval(refreshLogs, 5000);
+setInterval(refreshMetrics, 60000);
+</script>
+</body>
+</html>
