@@ -51,6 +51,7 @@ class Config:
     # Sources & agents
     download_sources: List[DownloadSource]
     agents: List[AgentConfig]
+    monitors: List[MonitorSource]
 
     # Scheduler
     daily_variance: float
@@ -61,8 +62,6 @@ class Config:
     download_pause_probability: float
     download_pause_range: Tuple[int, int]
     max_concurrent_downloads: int
-
-    monitors: List[MonitorSource]
 
     # Logging
     log_level: str
@@ -128,7 +127,7 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
 
     monitors = [
         MonitorSource(label=m["label"], metric_url=m["metric_url"])
-        for m in data.get("monitors", [])
+        for m in data.get("metric_only", [])
     ]
 
     pause_range = dl.get("pause_range", [10, 90])

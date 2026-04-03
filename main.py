@@ -59,8 +59,8 @@ def main() -> None:
     state = State()
 
     log.info(
-        "NetPulse starting | panel=http://%s:%d | agents=%d | sources=%d",
-        cfg.panel_host, cfg.panel_port, len(cfg.agents), len(cfg.download_sources),
+        "NetPulse starting | panel=http://%s:%d | agents=%d | sources=%d | monitors_only=%d",
+        cfg.panel_host, cfg.panel_port, len(cfg.agents), len(cfg.download_sources),len(cfg.monitors),
     )
     log.info(
         "SSH tunnel command: ssh -L %d:127.0.0.1:%d user@<server>",

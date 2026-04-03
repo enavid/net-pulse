@@ -41,7 +41,8 @@ def create_app(cfg: Config, state: State) -> FastAPI:
     # API: metrics
     @app.get("/api/metrics")
     async def api_metrics():
-        results = await fetch_all_metrics(cfg.download_sources, cfg.verify_ssl)
+        all_sources = cfg.download_sources + cfg.monitors
+        results = await fetch_all_metrics(all_sources, cfg.verify_ssl)
         return JSONResponse([
             {
                 "label": m.label,
