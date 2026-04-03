@@ -15,6 +15,12 @@ _CONFIG_FILE = Path("config.toml")
 # Dataclasses
 
 @dataclass
+class MonitorSource:
+    label: str
+    metric_url: str
+
+
+@dataclass
 class DownloadSource:
     label: str
     download_url: str
@@ -55,6 +61,8 @@ class Config:
     download_pause_probability: float
     download_pause_range: Tuple[int, int]
     max_concurrent_downloads: int
+
+    monitors: List[MonitorSource]
 
     # Logging
     log_level: str
@@ -118,6 +126,11 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         for a in data.get("agents", [])
     ]
 
+    monitors = [
+        MonitorSource(label=m["label"], metric_url=m["metric_url"])
+        for m in data.get("monitors", [])
+    ]
+
     pause_range = dl.get("pause_range", [10, 90])
     weights     = sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])
 
@@ -127,6 +140,7 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         secret_key=panel.get("secret_key", "change-me"),
         download_sources=sources,
         agents=agents,
+        monitors=monitors,
         daily_variance=float(sched.get("daily_variance", 0.20)),
         schedule_weights=list(weights),
         download_speed_cap=int(dl.get("speed_cap", 5 * 1024 ** 2)),

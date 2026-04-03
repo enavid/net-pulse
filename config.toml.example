@@ -35,6 +35,11 @@ verify_ssl = false
 level = "INFO"
 file = "logs/netpulse.log"
 
+# ── Metric Servers only ─────────────────────────────────────
+[[metric_only]]
+label = "monitor1"
+metric_url = "https://5.x.x.x/your-token"
+
 # ── Download Sources (VPN servers) ────────────────────
 # Each source has a label, a download URL, and a metric URL.
 

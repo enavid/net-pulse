@@ -43,6 +43,6 @@ async def fetch_metric(label: str, url: str, verify_ssl: bool = False) -> Server
     return metric
 
 
-async def fetch_all_metrics(sources: list, verify_ssl: bool = False) -> list[ServerMetric]:
+async def fetch_all_metrics(sources, verify_ssl=False):
     tasks = [fetch_metric(s.label, s.metric_url, verify_ssl) for s in sources]
     return await asyncio.gather(*tasks)

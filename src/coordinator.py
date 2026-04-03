@@ -20,7 +20,8 @@ async def run_cycle(cfg: Config, state: State) -> None:
 
     # Fetch metrics to show VPN server load (informational)
     if cfg.download_sources:
-        metrics = await fetch_all_metrics(cfg.download_sources, cfg.verify_ssl)
+        all_sources = cfg.download_sources + cfg.monitors
+        metrics = await fetch_all_metrics(all_sources, cfg.verify_ssl)
         for m in metrics:
             if m.reachable:
                 log.info("VPN metric | label=%s | rx_gb=%.2f | tx_gb=%.2f", m.label, m.rx_gb, m.tx_gb)
