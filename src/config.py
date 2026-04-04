@@ -19,13 +19,6 @@ class DownloadSource:
     label: str
     download_url: str
     metric_url: str
-    monthly_limit_gb: float      # total monthly quota for this server
-    usage_quota_pct: float       # fraction of quota allowed for downloads (0.0–1.0)
-
-    @property
-    def monthly_allowed_gb(self) -> float:
-        return self.monthly_limit_gb * self.usage_quota_pct
-
 
 @dataclass
 class MonitorSource:
@@ -42,6 +35,13 @@ class AgentConfig:
     user: str
     password: str
     daily_limit_gb: float
+    monthly_limit_gb: float      # total monthly quota for this server
+    usage_quota_pct: float       # fraction of quota allowed for downloads (0.0–1.0)
+
+    @property
+    def monthly_allowed_gb(self) -> float:
+        return self.monthly_limit_gb * self.usage_quota_pct
+
 
     @property
     def is_local(self) -> bool:
@@ -117,9 +117,7 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         DownloadSource(
             label=s["label"],
             download_url=s["download_url"],
-            metric_url=s["metric_url"],
-            monthly_limit_gb=float(s.get("monthly_limit_gb", 0.0)),
-            usage_quota_pct=float(s.get("usage_quota_pct", 1.0)),
+            metric_url=s["metric_url"]
         )
         for s in data.get("sources", [])
     ]
@@ -137,6 +135,8 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
             user=a["user"],
             password=a["password"],
             daily_limit_gb=float(a["daily_limit_gb"]),
+            monthly_limit_gb=float(a.get("monthly_limit_gb", 0.0)),
+            usage_quota_pct=float(a.get("usage_quota_pct", 1.0)),
         )
         for a in data.get("agents", [])
     ]

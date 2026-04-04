@@ -478,14 +478,23 @@ body::before {
     <!-- Quota -->
     <div id="page-quota" class="page">
       <div class="btn-group">
-        <button class="btn" onclick="refreshMetrics()">↻ Refresh Metrics</button>
+        <button class="btn" onclick="refreshQuotaPage()">↻ Refresh</button>
         <span id="metricSpinner" class="spin" style="align-self:center"></span>
+      </div>
+      <div class="section-hdr" style="margin-bottom:14px">
+        <span class="section-title">Agent Monthly Quota</span>
+      </div>
+      <div id="quotaCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px">
+        <div class="empty">Loading…</div>
+      </div>
+      <div class="section-hdr" style="margin-bottom:14px">
+        <span class="section-title">VPN Server Metrics</span>
       </div>
       <div class="panel">
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th><th>Limit</th><th>Allowed</th><th>Used</th><th>Remaining</th><th>Quota</th></tr></thead>
-            <tbody id="metricsBody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th></tr></thead>
+            <tbody id="metricsBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -499,7 +508,7 @@ body::before {
       <div class="panel">
         <div class="tbl-wrap">
           <table class="tbl">
-            <thead><tr><th>Month</th><th>Source</th><th>Downloaded (GB)</th></tr></thead>
+            <thead><tr><th>Month</th><th>Agent</th><th>Downloaded (GB)</th></tr></thead>
             <tbody id="historyBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -552,7 +561,7 @@ function navTo(name, el) {
   currentPage = name;
   closeSidebar();
   if(name==='plan')    loadPlan();
-  if(name==='quota')   refreshMetrics();
+  if(name==='quota')   refreshQuotaPage();
   if(name==='history') loadHistory();
   if(name==='logs')    refreshLogs();
 }
@@ -642,35 +651,52 @@ async function loadPlan() {
   </tr>`).join('');
 }
 
-// ── Metrics ────────────────────────────────────────────────────────────────
+// ── Metrics (VPN servers — no quota) ──────────────────────────────────────
 async function refreshMetrics() {
+  const data = await fetch('/api/metrics').then(r=>r.json()).catch(()=>[]);
+  const tb = $('metricsBody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="5" class="empty">No sources.</td></tr>'; return; }
+  tb.innerHTML = data.map(m=>`<tr>
+    <td>${m.label}${m.is_monitor?'<span class="badge">monitor</span>':''}</td>
+    <td class="dim">${m.is_monitor?'monitor':'source'}</td>
+    <td class="${m.reachable?'up':'dn'}">${m.reachable?'● UP':'✕ DOWN'}</td>
+    <td class="rx">${m.reachable?m.rx_gb.toFixed(2):'—'}</td>
+    <td class="tx">${m.reachable?m.tx_gb.toFixed(2):'—'}</td>
+  </tr>`).join('');
+}
+
+// ── Agent quota cards ──────────────────────────────────────────────────────
+async function refreshAgentQuota() {
+  const data = await fetch('/api/agent-quota').then(r=>r.json()).catch(()=>[]);
+  const grid = $('quotaCards');
+  if(!data.length){ grid.innerHTML='<div class="empty">No agents configured.</div>'; return; }
+  grid.innerHTML = data.map(a => {
+    const hasQ = a.has_quota && a.monthly_allowed_gb > 0;
+    const usedPct = hasQ ? Math.min(100, a.monthly_used_gb / a.monthly_allowed_gb * 100) : 0;
+    const cls = usedPct > 90 ? 'q-crit' : usedPct > 70 ? 'q-warn' : 'q-ok';
+    return `<div class="panel" style="margin-bottom:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div class="card-name">${a.label}</div>
+          <div class="card-sub">${a.host} · ${a.daily_limit_gb} GB/day</div>
+        </div>
+        ${hasQ ? `<span style="font-size:11px;color:${usedPct>90?'var(--red)':usedPct>70?'var(--yellow)':'var(--green)'}">${usedPct.toFixed(1)}%</span>` : '<span class="dim">no quota</span>'}
+      </div>
+      ${hasQ ? `
+      <div class="quota-track" style="margin-bottom:10px"><div class="quota-fill ${cls}" style="width:${usedPct.toFixed(1)}%"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center">
+        <div><div style="font-size:14px;font-weight:700;color:var(--text)">${a.monthly_allowed_gb.toFixed(1)} GB</div><div class="cs-label">Allowed</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:var(--accent)">${a.monthly_used_gb.toFixed(2)} GB</div><div class="cs-label">Used</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:${usedPct>90?'var(--red)':'var(--green)'}">${a.monthly_remaining_gb.toFixed(2)} GB</div><div class="cs-label">Remaining</div></div>
+      </div>` : '<div class="dim" style="font-size:11px">No monthly limit configured.</div>'}
+    </div>`;
+  }).join('');
+}
+
+async function refreshQuotaPage() {
   $('metricSpinner').classList.add('on');
-  try {
-    const data = await fetch('/api/metrics').then(r=>r.json()).catch(()=>[]);
-    const tb = $('metricsBody');
-    if(!data.length){ tb.innerHTML='<tr><td colspan="10" class="empty">No sources.</td></tr>'; return; }
-    tb.innerHTML = data.map(m=>{
-      let qBar='', qPct='—';
-      if(!m.is_monitor && m.monthly_limit_gb>0){
-        const pct = (m.monthly_used_gb||0)/m.monthly_allowed_gb*100;
-        const cls = pct>90?'q-crit':pct>70?'q-warn':'q-ok';
-        qBar=`<div class="quota-track"><div class="quota-fill ${cls}" style="width:${Math.min(100,pct).toFixed(1)}%"></div></div>`;
-        qPct=pct.toFixed(1)+'%';
-      }
-      return `<tr>
-        <td>${m.label}${m.is_monitor?'<span class="badge">monitor</span>':''}</td>
-        <td class="dim">${m.is_monitor?'monitor':'source'}</td>
-        <td class="${m.reachable?'up':'dn'}">${m.reachable?'● UP':'✕ DOWN'}</td>
-        <td class="rx">${m.reachable?m.rx_gb.toFixed(2):'—'}</td>
-        <td class="tx">${m.reachable?m.tx_gb.toFixed(2):'—'}</td>
-        <td class="dim">${!m.is_monitor&&m.monthly_limit_gb>0?m.monthly_limit_gb+' GB':'—'}</td>
-        <td class="dim">${!m.is_monitor&&m.monthly_allowed_gb>0?m.monthly_allowed_gb.toFixed(1)+' GB':'—'}</td>
-        <td>${!m.is_monitor?(m.monthly_used_gb||0).toFixed(2)+' GB':'—'}</td>
-        <td>${!m.is_monitor&&m.monthly_limit_gb>0?(m.monthly_remaining_gb||0).toFixed(2)+' GB':'—'}</td>
-        <td>${qBar}<span style="font-size:11px">${qPct}</span></td>
-      </tr>`;
-    }).join('');
-  } finally { $('metricSpinner').classList.remove('on'); }
+  try { await Promise.all([refreshMetrics(), refreshAgentQuota()]); }
+  finally { $('metricSpinner').classList.remove('on'); }
 }
 
 // ── History ────────────────────────────────────────────────────────────────
@@ -679,7 +705,7 @@ async function loadHistory() {
   const tb = $('historyBody');
   if(!rows.length){ tb.innerHTML='<tr><td colspan="3" class="empty">No history yet.</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>`<tr>
-    <td>${r.year_month}</td><td>${r.source_label}</td>
+    <td>${r.year_month}</td><td>${r.agent_label}</td>
     <td class="rx">${(r.downloaded_bytes/1024**3).toFixed(3)} GB</td>
   </tr>`).join('');
 }
@@ -702,7 +728,7 @@ async function refreshLogs() {
 }
 
 // ── Refresh all ────────────────────────────────────────────────────────────
-async function refreshAll() { await Promise.all([loadState(), refreshMetrics()]); }
+async function refreshAll() { await Promise.all([loadState(), refreshMetrics(), refreshAgentQuota()]); }
 
 refreshAll();
 setInterval(loadState,  10000);

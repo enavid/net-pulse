@@ -36,15 +36,11 @@ file = "logs/netpulse.log"
 label = "server1"
 download_url = "https://192.168.1.100/files/1gb.zip"
 metric_url = "https://192.168.1.100/your-metric-token-here"
-monthly_limit_gb = 100.0
-usage_quota_pct = 0.60       # use at most 60 GB this month
 
 [[sources]]
 label = "server2"
 download_url = "https://192.168.1.200/files/1gb.zip"
 metric_url = "https://192.168.1.200/your-metric-token-here"
-monthly_limit_gb = 200.0
-usage_quota_pct = 0.60
 
 # ── Monitor-only Sources ──────────────────────────────────────────────────────
 # These servers are monitored for metrics but never used for downloads.
@@ -63,6 +59,8 @@ port = 0
 user = "local"
 password = "local"
 daily_limit_gb = 8.0
+monthly_limit_gb = 100.0
+usage_quota_pct = 0.60       # use at most 60 GB this month
 
 [[agents]]
 label = "agent1"
@@ -71,6 +69,8 @@ port = 22
 user = "root"
 password = "secret"
 daily_limit_gb = 5.0
+monthly_limit_gb = 100.0
+usage_quota_pct = 0.60
 
 [[agents]]
 label = "agent2"
@@ -79,3 +79,5 @@ port = 22
 user = "root"
 password = "secret"
 daily_limit_gb = 10.0
+monthly_limit_gb = 100.0
+usage_quota_pct = 0.60

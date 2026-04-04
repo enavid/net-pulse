@@ -15,8 +15,8 @@ from src.state import State
 from src.config import Config
 from src.logger import get_log_buffer
 from src.metrics import fetch_all_metrics
-from src.agent import test_agent_connection
 from fastapi.staticfiles import StaticFiles
+from src.agent import test_agent_connection
 from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Response, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -24,7 +24,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 _HERE = Path(__file__).parent.parent
 _SESSION_COOKIE = "np_session"
-_SESSION_TTL = 12 * 3600   # 12 hours
+_SESSION_TTL = 12 * 3600
 
 
 def _sign(value: str, secret: str) -> str:
@@ -33,8 +33,7 @@ def _sign(value: str, secret: str) -> str:
 
 def _make_token(secret: str) -> str:
     ts = str(int(time.time()))
-    sig = _sign(ts, secret)
-    return f"{ts}.{sig}"
+    return f"{ts}.{_sign(ts, secret)}"
 
 
 def _verify_token(token: str, secret: str) -> bool:
@@ -48,8 +47,7 @@ def _verify_token(token: str, secret: str) -> bool:
 
 
 def _is_authenticated(request: Request, secret: str) -> bool:
-    token = request.cookies.get(_SESSION_COOKIE, "")
-    return _verify_token(token, secret)
+    return _verify_token(request.cookies.get(_SESSION_COOKIE, ""), secret)
 
 
 def create_app(cfg: Config, state: State) -> FastAPI:
@@ -60,33 +58,22 @@ def create_app(cfg: Config, state: State) -> FastAPI:
     if static_path.exists():
         app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
-    # Auth guard helper
     def _guard(request: Request):
-        """Return None if authenticated, else a RedirectResponse to /login."""
         if not _is_authenticated(request, cfg.secret_key):
             return RedirectResponse("/login", status_code=303)
         return None
 
-    # Login page
+    # Auth
     @app.get("/login", response_class=HTMLResponse)
     async def login_page(request: Request, error: str = ""):
         return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
 
     @app.post("/login")
-    async def login_submit(
-        request: Request,
-        response: Response,
-        username: str = Form(...),
-        password: str = Form(...),
-    ):
+    async def login_submit(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
         if username == cfg.panel_username and password == cfg.panel_password:
-            token = _make_token(cfg.secret_key)
             resp = RedirectResponse("/", status_code=303)
-            resp.set_cookie(
-                _SESSION_COOKIE, token,
-                httponly=True, samesite="strict",
-                max_age=_SESSION_TTL,
-            )
+            resp.set_cookie(_SESSION_COOKIE, _make_token(cfg.secret_key),
+                            httponly=True, samesite="strict", max_age=_SESSION_TTL)
             return resp
         return RedirectResponse("/login?error=1", status_code=303)
 
@@ -103,38 +90,57 @@ def create_app(cfg: Config, state: State) -> FastAPI:
             return redir
         return templates.TemplateResponse(request=request, name="index.html")
 
-    # API routes (all protected)
+    # API: state
     @app.get("/api/state")
     async def api_state(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
         return JSONResponse(state.to_dict())
 
+    # API: VPN server metrics (no quota — upload is free)
     @app.get("/api/metrics")
     async def api_metrics(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
         src_metrics = await fetch_all_metrics(cfg.download_sources, cfg.verify_ssl)
         mon_metrics = await fetch_all_metrics(cfg.monitors, cfg.verify_ssl)
-        usage_rows  = storage.get_monthly_usage()
-        monthly_usage = {r["source_label"]: r["downloaded_bytes"] for r in usage_rows}
 
-        def source_entry(m, src=None):
-            entry = {"label": m.label, "rx_gb": m.rx_gb, "tx_gb": m.tx_gb,
-                     "reachable": m.reachable, "error": m.error, "is_monitor": src is None}
-            if src is not None:
-                used_bytes    = monthly_usage.get(src.label, 0)
-                allowed_bytes = src.monthly_allowed_gb * 1024 ** 3
-                entry["monthly_limit_gb"]     = src.monthly_limit_gb
-                entry["monthly_allowed_gb"]   = src.monthly_allowed_gb
-                entry["monthly_used_gb"]      = round(used_bytes / 1024 ** 3, 3)
-                entry["monthly_remaining_gb"] = round(max(0, (allowed_bytes - used_bytes) / 1024 ** 3), 3)
-                entry["usage_quota_pct"]      = src.usage_quota_pct
-            return entry
+        def entry(m, is_monitor=False):
+            return {
+                "label": m.label,
+                "rx_gb": m.rx_gb,
+                "tx_gb": m.tx_gb,
+                "reachable": m.reachable,
+                "error": m.error,
+                "is_monitor": is_monitor,
+            }
 
-        src_map = {s.label: s for s in cfg.download_sources}
-        result  = [source_entry(m, src_map.get(m.label)) for m in src_metrics]
-        result += [source_entry(m) for m in mon_metrics]
+        result  = [entry(m, False) for m in src_metrics]
+        result += [entry(m, True)  for m in mon_metrics]
         return JSONResponse(result)
 
+    # API: agent quota (agents have download limits)
+    @app.get("/api/agent-quota")
+    async def api_agent_quota(request: Request):
+        if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
+        usage_rows    = storage.get_monthly_usage()
+        monthly_usage = {r["agent_label"]: r["downloaded_bytes"] for r in usage_rows}
+        return JSONResponse([
+            {
+                "label":                a.label,
+                "host":                 a.host,
+                "daily_limit_gb":       a.daily_limit_gb,
+                "monthly_limit_gb":     a.monthly_limit_gb,
+                "monthly_allowed_gb":   round(a.monthly_allowed_gb, 2),
+                "monthly_used_gb":      round(monthly_usage.get(a.label, 0) / 1024 ** 3, 3),
+                "monthly_remaining_gb": round(
+                    max(0, (a.monthly_allowed_gb * 1024 ** 3 - monthly_usage.get(a.label, 0)) / 1024 ** 3), 3
+                ),
+                "usage_quota_pct":      a.usage_quota_pct,
+                "has_quota":            a.monthly_limit_gb > 0,
+            }
+            for a in cfg.agents
+        ])
+
+    # API: ping agents
     @app.get("/api/ping-agents")
     async def api_ping_agents(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
@@ -145,27 +151,30 @@ def create_app(cfg: Config, state: State) -> FastAPI:
             for a, (ok, msg) in zip(cfg.agents, results_raw)
         ])
 
+    # API: logs
     @app.get("/api/logs")
     async def api_logs(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
         return JSONResponse({"lines": get_log_buffer()[-200:]})
 
+    # API: config summary
     @app.get("/api/config")
     async def api_config(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
         return JSONResponse({
-            "agents":   [{"label": a.label, "host": a.host, "daily_limit_gb": a.daily_limit_gb} for a in cfg.agents],
-            "sources":  [{"label": s.label, "download_url": s.download_url,
-                          "monthly_limit_gb": s.monthly_limit_gb, "usage_quota_pct": s.usage_quota_pct,
-                          "monthly_allowed_gb": s.monthly_allowed_gb} for s in cfg.download_sources],
+            "agents":   [{"label": a.label, "host": a.host, "daily_limit_gb": a.daily_limit_gb,
+                          "monthly_limit_gb": a.monthly_limit_gb} for a in cfg.agents],
+            "sources":  [{"label": s.label, "download_url": s.download_url} for s in cfg.download_sources],
             "monitors": [{"label": m.label} for m in cfg.monitors],
         })
 
+    # API: plan
     @app.get("/api/plan")
     async def api_plan(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
         return JSONResponse([dict(r) for r in storage.get_today_events()])
 
+    # API: monthly history
     @app.get("/api/monthly-history")
     async def api_monthly_history(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
