@@ -51,6 +51,7 @@ class AgentConfig:
 @dataclass
 class Config:
     # Panel
+    total_days: int
     panel_host: str
     panel_port: int
     secret_key: str
@@ -105,6 +106,7 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
 
     panel    = data.get("panel", {})
     sched    = data.get("scheduler", {})
+    total_days = int(sched.get("days", 0))
     dl       = data.get("download", {})
     network  = data.get("network", {})
     logging_ = data.get("logging", {})
@@ -141,6 +143,7 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
     weights     = sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])
 
     return Config(
+        total_days=total_days,
         panel_host=panel.get("host", "127.0.0.1"),
         panel_port=int(panel.get("port", 7070)),
         secret_key=panel.get("secret_key", "change-me"),

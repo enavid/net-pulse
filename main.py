@@ -7,18 +7,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import sys
 import time
-import threading
-
+import asyncio
 import uvicorn
-
+import threading
+from src import storage
+from src.state import State
+from src.panel import create_app
 from src.config import load_config
 from src.coordinator import run_cycle
 from src.logger import setup_logger, get_logger
-from src.panel import create_app
-from src.state import State
+
 
 
 def _start_panel(cfg, state) -> None:
@@ -53,8 +53,9 @@ def main() -> None:
     setup_logger(cfg.log_file, cfg.log_level)
     log = get_logger("main")
 
-    raw = input("How many days to run? (0 = run forever): ").strip()
-    total_days = int(raw) if raw.isdigit() else 0
+    total_days = cfg.total_days
+    # raw = input("How many days to run? (0 = run forever): ").strip()
+    # total_days = int(raw) if raw.isdigit() else 0
 
     state = State()
 
