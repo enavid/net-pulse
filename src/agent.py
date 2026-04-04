@@ -116,6 +116,13 @@ async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Conf
     event_times   = generate_event_times(n_events, cfg.schedule_weights)
     source_cycle  = [sources[i % len(sources)] for i in range(n_events)]
 
+    # Remove stale pending events from previous runs for this agent today
+    with storage.get_connection() as conn:
+        conn.execute(
+            "DELETE FROM planned_events WHERE date=? AND agent_label=? AND status='pending'",
+            (today, agent.label)
+        )
+
     # Persist plan to SQLite
     plan_rows = [
         {
