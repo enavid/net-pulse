@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import List, Tuple
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 _CONFIG_FILE = Path("config.toml")
 
@@ -55,6 +55,8 @@ class Config:
     panel_host: str
     panel_port: int
     secret_key: str
+    panel_username: str
+    panel_password: str
 
     # Sources & agents
     download_sources: List[DownloadSource]
@@ -147,6 +149,8 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         panel_host=panel.get("host", "127.0.0.1"),
         panel_port=int(panel.get("port", 7070)),
         secret_key=panel.get("secret_key", "change-me"),
+        panel_username=panel.get("username", "admin"),
+        panel_password=panel.get("password", "admin"),
         download_sources=sources,
         monitors=monitors,
         agents=agents,

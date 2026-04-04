@@ -5,6 +5,8 @@
 [panel]
 host = "127.0.0.1"
 port = 7070
+username = "admin"
+password = "admin123"
 secret_key = "change-me-to-a-random-string"
 
 [scheduler]

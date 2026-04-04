@@ -110,7 +110,10 @@
 
   <header>
     <div class="logo">NetPulse <span>coordinator panel</span></div>
-    <span class="clock" id="clock"></span>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="clock" id="clock"></span>
+      <a href="/logout" style="font-size:11px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:4px 12px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">logout</a>
+    </div>
   </header>
 
   <div class="status-strip">
