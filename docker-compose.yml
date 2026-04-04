@@ -1,0 +1,26 @@
+services:
+  netpulse:
+    build: .
+    container_name: netpulse
+    restart: unless-stopped
+
+    # config.toml is mounted read-only — edit it on the host, restart to apply
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - netpulse_logs:/app/logs
+
+    # Panel binds to 127.0.0.1 inside the container.
+    # Map it to localhost on the host so SSH tunnel still works:
+    #   ssh -L 10909:127.0.0.1:10909 user@server
+    ports:
+      - "10909:10909"
+
+    environment:
+      - TZ=Asia/Tehran
+
+    # Keep stdin open so the "How many days?" prompt is handled via env var
+    stdin_open: false
+
+volumes:
+  netpulse_logs:
+    driver: local

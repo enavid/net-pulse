@@ -3,8 +3,8 @@
 # ─────────────────────────────────────────────────────
 
 [panel]
-host = "127.0.0.1"
-port = 7070
+host = "127.0.0.1" # 0.0.0.0 when use docker
+port = 10909
 username = "admin"
 password = "admin123"
 secret_key = "change-me-to-a-random-string"
