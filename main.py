@@ -52,7 +52,7 @@ def main() -> None:
     cfg = load_config()
     setup_logger(cfg.log_file, cfg.log_level)
     log = get_logger("main")
-
+    storage.init_db()
     total_days = cfg.total_days
     # raw = input("How many days to run? (0 = run forever): ").strip()
     # total_days = int(raw) if raw.isdigit() else 0
