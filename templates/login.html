@@ -1,73 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NetPulse · Login</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0c10; --surface: #0f1318; --border: #1e2530;
-    --accent: #00e5ff; --red: #ef4444; --muted: #64748b; --text: #e2e8f0;
-    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--text); font-family: var(--mono);
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  }
-  body::before {
-    content: ''; position: fixed; inset: 0;
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
-    opacity: .12; pointer-events: none;
-  }
-  .card {
-    position: relative; z-index: 1;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 40px 36px; width: 100%; max-width: 380px;
-    box-shadow: 0 24px 60px rgba(0,0,0,.5);
-  }
-  .logo {
-    font-family: var(--sans); font-size: 28px; font-weight: 800;
-    color: var(--accent); text-shadow: 0 0 24px rgba(0,229,255,.25);
-    text-align: center; margin-bottom: 6px;
-  }
-  .sub { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 32px; }
+[data-theme="dark"] {
+  --bg: #080b0f; --surface: #111722; --border: #1f2a3c; --border2: #2a3a52;
+  --accent: #00d4f0; --accent-glow: rgba(0,212,240,.12);
+  --text: #e2e8f0; --text2: #8899aa; --text3: #4a5a70;
+  --red: #f43f5e; --grid: #1a2232;
+}
+[data-theme="light"] {
+  --bg: #f0f4f8; --surface: #ffffff; --border: #d1dbe8; --border2: #b8c8d8;
+  --accent: #0095b0; --accent-glow: rgba(0,149,176,.1);
+  --text: #0f1923; --text2: #4a6070; --text3: #9ab0c0;
+  --red: #e11d48; --grid: #dde6ef;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:13px;
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  transition:background .3s, color .3s;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:40px 40px; opacity:.5;
+}
+.card {
+  position:relative; z-index:1;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:40px 36px; width:100%; max-width:380px;
+  margin:20px;
+}
+.logo {
+  font-family:'Syne',sans-serif; font-size:28px; font-weight:800;
+  color:var(--accent); text-align:center; display:block; margin-bottom:4px;
+}
+.sub { text-align:center; color:var(--text2); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:32px; }
 
-  label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  input {
-    width: 100%; padding: 10px 12px; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text); font-family: var(--mono); font-size: 13px;
-    outline: none; transition: border-color .15s; margin-bottom: 18px;
-  }
-  input:focus { border-color: var(--accent); }
-
-  .error-msg {
-    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
-    color: var(--red); border-radius: 6px; padding: 10px 12px;
-    font-size: 12px; margin-bottom: 18px; text-align: center;
-  }
-
-  button {
-    width: 100%; padding: 11px; border-radius: 6px;
-    background: rgba(0,229,255,.08); border: 1px solid var(--accent);
-    color: var(--accent); font-family: var(--mono); font-size: 13px;
-    font-weight: 700; cursor: pointer; transition: all .15s; letter-spacing: .5px;
-  }
-  button:hover { background: rgba(0,229,255,.15); }
-  button:active { transform: scale(.98); }
+label { display:block; font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:6px; }
+input[type=text], input[type=password] {
+  width:100%; padding:10px 12px;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:7px; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:13px;
+  outline:none; transition:border-color .15s; margin-bottom:18px;
+}
+input:focus { border-color:var(--accent); }
+.err {
+  background:rgba(244,63,94,.08); border:1px solid rgba(244,63,94,.25);
+  color:var(--red); border-radius:8px; padding:10px 14px;
+  font-size:12px; margin-bottom:18px; text-align:center;
+}
+button[type=submit] {
+  width:100%; padding:11px;
+  background:var(--accent-glow); border:1px solid var(--accent);
+  color:var(--accent); border-radius:7px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700;
+  cursor:pointer; transition:all .15s; letter-spacing:.5px;
+}
+button[type=submit]:hover { background:rgba(0,212,240,.2); }
+button[type=submit]:active { transform:scale(.98); }
+.theme-row { display:flex; justify-content:center; margin-top:20px; }
+.tb {
+  background:none; border:1px solid var(--border); border-radius:6px;
+  color:var(--text2); padding:5px 14px; font-size:11px;
+  cursor:pointer; transition:all .15s; font-family:inherit;
+}
+.tb:hover { border-color:var(--accent); color:var(--accent); }
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo">NetPulse</div>
+  <span class="logo">NetPulse</span>
   <div class="sub">coordinator panel</div>
 
   {% if error %}
-  <div class="error-msg">Invalid username or password.</div>
+  <div class="err">Invalid username or password.</div>
   {% endif %}
 
   <form method="post" action="/login">
@@ -77,6 +92,19 @@
     <input type="password" name="password" autocomplete="current-password">
     <button type="submit">Sign In →</button>
   </form>
+
+  <div class="theme-row">
+    <button class="tb" onclick="toggleTheme()">toggle theme</button>
+  </div>
 </div>
+<script>
+const saved = localStorage.getItem('np-theme');
+if(saved) document.documentElement.dataset.theme = saved;
+function toggleTheme(){
+  const next = document.documentElement.dataset.theme==='dark'?'light':'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('np-theme', next);
+}
+</script>
 </body>
 </html>

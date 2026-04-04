@@ -1,349 +1,707 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NetPulse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0c10; --surface: #0f1318; --border: #1e2530;
-    --accent: #00e5ff; --accent2: #7c3aed;
-    --green: #10b981; --red: #ef4444; --yellow: #f59e0b;
-    --text: #e2e8f0; --muted: #64748b;
-    --mono: 'JetBrains Mono', monospace; --sans: 'Syne', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; min-height: 100vh; }
-  body::before {
-    content:''; position:fixed; inset:0;
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
-    opacity:.12; pointer-events:none; z-index:0;
-  }
-  .wrap { position:relative; z-index:1; max-width:1500px; margin:0 auto; padding:24px; }
+/* ── Theme tokens ── */
+[data-theme="dark"] {
+  --bg:        #080b0f;
+  --bg2:       #0d1117;
+  --surface:   #111722;
+  --surface2:  #161e2e;
+  --border:    #1f2a3c;
+  --border2:   #2a3a52;
+  --text:      #e2e8f0;
+  --text2:     #8899aa;
+  --text3:     #4a5a70;
+  --accent:    #00d4f0;
+  --accent-glow: rgba(0,212,240,.18);
+  --accent2:   #8b5cf6;
+  --green:     #10b981;
+  --red:       #f43f5e;
+  --yellow:    #f59e0b;
+  --grid-color:#1a2232;
+  --shadow:    0 8px 32px rgba(0,0,0,.6);
+  --invert-logo: 0;
+}
+[data-theme="light"] {
+  --bg:        #f0f4f8;
+  --bg2:       #e8edf3;
+  --surface:   #ffffff;
+  --surface2:  #f8fafc;
+  --border:    #d1dbe8;
+  --border2:   #b8c8d8;
+  --text:      #0f1923;
+  --text2:     #4a6070;
+  --text3:     #9ab0c0;
+  --accent:    #0095b0;
+  --accent-glow: rgba(0,149,176,.12);
+  --accent2:   #6d28d9;
+  --green:     #059669;
+  --red:       #e11d48;
+  --yellow:    #d97706;
+  --grid-color:#dde6ef;
+  --shadow:    0 4px 20px rgba(0,0,0,.08);
+  --invert-logo: 1;
+}
 
-  header { display:flex; align-items:center; justify-content:space-between; padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:20px; }
-  .logo { font-family:var(--sans); font-size:26px; font-weight:800; letter-spacing:-1px; color:var(--accent); text-shadow:0 0 24px rgba(0,229,255,.25); }
-  .logo span { color:var(--muted); font-weight:400; font-size:12px; font-family:var(--mono); margin-left:10px; vertical-align:middle; }
-  .clock { color:var(--muted); font-size:12px; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior: smooth; }
 
-  .status-strip { display:flex; gap:20px; flex-wrap:wrap; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:22px; font-size:12px; }
-  .status-item { display:flex; gap:6px; align-items:center; }
-  .status-item .label { color:var(--muted); }
-  .status-item .value { color:var(--text); font-weight:500; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  min-height: 100vh;
+  transition: background .3s, color .3s;
+}
 
-  .tab-bar { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:24px; }
-  .tab { padding:10px 20px; font-family:var(--mono); font-size:12px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; transition:all .15s; background:none; border-top:none; border-left:none; border-right:none; letter-spacing:.5px; }
-  .tab:hover { color:var(--text); }
-  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-  .tab-content { display:none; }
-  .tab-content.active { display:block; }
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: .5;
+  transition: opacity .3s;
+}
 
-  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
-  .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:5px; font-family:var(--mono); font-size:12px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); transition:all .15s; }
-  .btn:hover { border-color:var(--accent); color:var(--accent); }
-  .btn:active { transform:scale(.97); }
-  .btn-accent { background:rgba(0,229,255,.08); border-color:var(--accent); color:var(--accent); }
+/* ── Layout ── */
+.app { position:relative; z-index:1; display:flex; flex-direction:column; min-height:100vh; }
 
-  .agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px; margin-bottom:28px; }
-  .agent-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:18px; transition:border-color .2s; animation:fadeUp .4s ease both; }
-  .agent-card:hover { border-color:var(--accent); }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+/* ── Sidebar nav (desktop) ── */
+.sidebar {
+  position: fixed; top:0; left:0; bottom:0; width:220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction:column;
+  z-index: 100;
+  transition: transform .3s, background .3s;
+}
 
-  .agent-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
-  .agent-label { font-family:var(--sans); font-size:15px; font-weight:700; }
-  .agent-host { color:var(--muted); font-size:11px; margin-top:2px; }
-  .conn-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; margin-top:4px; }
-  .conn-dot.ok   { background:var(--green); box-shadow:0 0 6px var(--green); }
-  .conn-dot.fail { background:var(--red); }
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-mark {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+  display: block;
+}
+.logo-sub { font-size:10px; color:var(--text2); letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
 
-  .progress-bar-wrap { background:var(--border); border-radius:3px; height:4px; margin-bottom:10px; overflow:hidden; }
-  .progress-bar { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .6s ease; }
+.nav { flex:1; padding:12px 0; overflow-y:auto; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 20px; cursor:pointer;
+  color:var(--text2); font-size:12px; letter-spacing:.3px;
+  border-left: 2px solid transparent;
+  transition: all .15s; user-select:none;
+}
+.nav-item svg { width:15px; height:15px; opacity:.7; flex-shrink:0; }
+.nav-item:hover { color:var(--text); background:var(--surface2); }
+.nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--accent-glow); }
+.nav-item.active svg { opacity:1; }
 
-  .agent-stats { display:flex; gap:16px; flex-wrap:wrap; }
-  .stat-val { font-size:17px; font-weight:700; color:var(--accent); }
-  .stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
-  .stat-ok .stat-val { color:var(--green); }
-  .stat-fail .stat-val { color:var(--red); }
+.sidebar-footer {
+  padding:16px 20px;
+  border-top: 1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+}
 
-  .panel { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:18px; margin-bottom:20px; }
-  .panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-  .section-title { font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+/* Theme toggle */
+.theme-btn {
+  width:32px; height:32px; border-radius:8px;
+  border:1px solid var(--border2); background:var(--surface2);
+  color:var(--text2); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; flex-shrink:0;
+}
+.theme-btn:hover { border-color:var(--accent); color:var(--accent); }
 
-  .tbl { width:100%; border-collapse:collapse; }
-  .tbl th { text-align:left; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:1px; padding-bottom:8px; border-bottom:1px solid var(--border); white-space:nowrap; }
-  .tbl td { padding:9px 8px 9px 0; border-bottom:1px solid var(--border); font-size:12px; vertical-align:middle; }
-  .tbl tr:last-child td { border-bottom:none; }
-  .up { color:var(--green); } .down { color:var(--red); }
-  .rx { color:var(--accent); font-weight:600; } .tx { color:var(--accent2); font-weight:600; }
+.logout-link {
+  flex:1; text-align:center;
+  font-size:11px; color:var(--text2);
+  text-decoration:none; padding:6px 10px;
+  border:1px solid var(--border); border-radius:6px;
+  transition:all .15s;
+}
+.logout-link:hover { border-color:var(--red); color:var(--red); }
 
-  .quota-wrap { background:var(--border); border-radius:2px; height:6px; min-width:70px; overflow:hidden; margin-bottom:2px; }
-  .quota-bar { height:100%; border-radius:2px; transition:width .5s ease; }
-  .quota-ok { background:var(--green); } .quota-warn { background:var(--yellow); } .quota-crit { background:var(--red); }
+/* ── Main content ── */
+.main {
+  margin-left:220px;
+  padding: 0;
+  flex:1;
+  transition: margin-left .3s;
+}
 
-  .status-pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-  .pill-pending { background:rgba(100,116,139,.15); color:var(--muted); }
-  .pill-running { background:rgba(245,158,11,.15); color:var(--yellow); animation:pulse 1.2s infinite; }
-  .pill-done    { background:rgba(16,185,129,.15); color:var(--green); }
-  .pill-failed  { background:rgba(239,68,68,.15); color:var(--red); }
-  @keyframes pulse { 50%{opacity:.4} }
+/* ── Top bar (mobile) ── */
+.topbar {
+  display:none;
+  position:sticky; top:0; z-index:90;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px;
+  align-items:center; gap:12px;
+}
+.hamburger {
+  width:32px; height:32px; border-radius:6px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--text2); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.topbar-logo { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--accent); flex:1; }
+.topbar-clock { font-size:11px; color:var(--text3); }
 
-  .log-box { background:#060810; border:1px solid var(--border); border-radius:8px; padding:14px; height:300px; overflow-y:auto; font-size:11px; line-height:1.7; }
-  .log-box::-webkit-scrollbar { width:4px; }
-  .log-box::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-  .log-line { white-space:pre-wrap; word-break:break-all; }
-  .log-line.info { color:#94a3b8; } .log-line.warn { color:var(--yellow); } .log-line.error { color:var(--red); } .log-line.debug { color:#475569; }
+/* ── Mobile drawer overlay ── */
+.drawer-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+  z-index:99; opacity:0; transition:opacity .25s;
+}
+.drawer-overlay.open { opacity:1; }
 
-  .spinner { width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; display:none; }
-  .spinner.active { display:inline-block; }
-  @keyframes spin { to{transform:rotate(360deg)} }
+/* ── Page ── */
+.page { display:none; padding:24px; animation:fadeIn .2s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
-  .monitor-badge { display:inline-block; padding:1px 6px; background:rgba(124,58,237,.15); color:var(--accent2); border-radius:3px; font-size:9px; margin-left:4px; }
-  .empty { color:var(--muted); font-size:12px; padding:10px 0; }
+/* ── Status bar ── */
+.status-bar {
+  display:flex; flex-wrap:wrap; gap:6px;
+  margin-bottom:24px;
+}
+.stat-chip {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:6px 14px;
+  display:flex; align-items:center; gap:6px;
+  font-size:11px;
+}
+.stat-chip .lbl { color:var(--text2); }
+.stat-chip .val { color:var(--text); font-weight:500; }
+.stat-chip.highlight .val { color:var(--accent); }
+
+/* ── Section header ── */
+.section-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.section-title {
+  font-family:'Syne',sans-serif;
+  font-size:11px; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase;
+  color:var(--text2);
+}
+
+/* ── Buttons ── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; border-radius:6px;
+  font-family:'JetBrains Mono',monospace; font-size:11px;
+  cursor:pointer; border:1px solid var(--border);
+  background:var(--surface2); color:var(--text2);
+  transition:all .15s; white-space:nowrap;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn:active { transform:scale(.97); }
+.btn-primary { background:var(--accent-glow); border-color:var(--accent); color:var(--accent); font-weight:500; }
+.btn-group { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+
+/* ── Agent cards ── */
+.agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:28px; }
+
+.agent-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px; padding:20px;
+  transition:border-color .2s, box-shadow .2s;
+  animation:slideUp .35s ease both;
+  position:relative; overflow:hidden;
+}
+.agent-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--accent2), var(--accent));
+  opacity:0; transition:opacity .2s;
+}
+.agent-card:hover { border-color:var(--border2); box-shadow:var(--shadow); }
+.agent-card:hover::before { opacity:1; }
+@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.card-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+.card-name { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--text); }
+.card-sub  { font-size:11px; color:var(--text2); margin-top:3px; }
+.card-ping { font-size:11px; margin-top:4px; }
+
+.conn-indicator {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--text3); flex-shrink:0; margin-top:3px;
+  transition:background .3s, box-shadow .3s;
+}
+.conn-indicator.ok   { background:var(--green); box-shadow:0 0 8px var(--green); }
+.conn-indicator.fail { background:var(--red); }
+
+.prog-track { background:var(--border); border-radius:4px; height:5px; margin-bottom:16px; overflow:hidden; }
+.prog-fill  { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .8s cubic-bezier(.4,0,.2,1); }
+
+.card-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.cs { text-align:center; }
+.cs-val   { font-size:16px; font-weight:700; color:var(--accent); line-height:1.2; }
+.cs-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-top:2px; }
+.cs.ok  .cs-val { color:var(--green); }
+.cs.bad .cs-val { color:var(--red); }
+
+/* ── Panel ── */
+.panel {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:20px; margin-bottom:20px;
+}
+
+/* ── Table ── */
+.tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.tbl { width:100%; border-collapse:collapse; min-width:500px; }
+.tbl th {
+  text-align:left; color:var(--text2);
+  font-size:10px; text-transform:uppercase; letter-spacing:1px;
+  padding:0 0 10px; border-bottom:1px solid var(--border);
+  white-space:nowrap; font-weight:400;
+}
+.tbl td { padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; vertical-align:middle; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl td:not(:last-child) { padding-right:16px; }
+
+.up  { color:var(--green); }
+.dn  { color:var(--red); }
+.rx  { color:var(--accent); font-weight:600; }
+.tx  { color:var(--accent2); font-weight:600; }
+.dim { color:var(--text2); font-size:11px; }
+
+/* ── Quota bar ── */
+.quota-track { background:var(--border); border-radius:3px; height:6px; min-width:80px; overflow:hidden; margin-bottom:3px; }
+.quota-fill  { height:100%; border-radius:3px; transition:width .6s ease; }
+.q-ok   { background:var(--green); }
+.q-warn { background:var(--yellow); }
+.q-crit { background:var(--red); }
+
+/* ── Pills ── */
+.pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.p-pending { background:rgba(74,90,112,.15); color:var(--text2); }
+.p-running { background:rgba(245,158,11,.12); color:var(--yellow); animation:blink 1.4s infinite; }
+.p-done    { background:rgba(16,185,129,.12); color:var(--green); }
+.p-failed  { background:rgba(244,63,94,.12); color:var(--red); }
+@keyframes blink { 50%{opacity:.5} }
+
+.badge { display:inline-block; padding:1px 7px; background:rgba(139,92,246,.15); color:var(--accent2); border-radius:4px; font-size:9px; margin-left:4px; }
+
+/* ── Log ── */
+.log-box {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:10px; padding:16px;
+  height:320px; overflow-y:auto;
+  font-size:11px; line-height:1.8;
+}
+.log-box::-webkit-scrollbar { width:3px; }
+.log-box::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.ll { white-space:pre-wrap; word-break:break-all; }
+.ll.info  { color:var(--text2); }
+.ll.warn  { color:var(--yellow); }
+.ll.error { color:var(--red); }
+.ll.debug { color:var(--text3); }
+
+/* ── Spinner ── */
+.spin { width:13px; height:13px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:rot .7s linear infinite; display:none; }
+.spin.on { display:inline-block; }
+@keyframes rot { to{transform:rotate(360deg)} }
+
+/* ── Clock (sidebar) ── */
+.sidebar-clock { font-size:10px; color:var(--text3); letter-spacing:.5px; margin-bottom:8px; display:block; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); box-shadow:4px 0 24px rgba(0,0,0,.4); }
+  .topbar { display:flex; }
+  .main { margin-left:0; }
+  .page { padding:16px; }
+  .agents-grid { grid-template-columns:1fr; }
+  .card-stats { grid-template-columns:repeat(4,1fr); }
+  .status-bar { gap:4px; }
+  .stat-chip { padding:4px 10px; }
+}
+
+@media (min-width:769px) and (max-width:1100px) {
+  .agents-grid { grid-template-columns:repeat(2,1fr); }
+}
+
+/* ── Empty ── */
+.empty { color:var(--text3); font-size:12px; padding:12px 0; }
+
+/* ── Scroll indicator ── */
+.tbl-wrap::after {
+  content:''; display:block;
+  position:sticky; bottom:0;
+  height:1px;
+}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app">
 
-  <header>
-    <div class="logo">NetPulse <span>coordinator panel</span></div>
-    <div style="display:flex;align-items:center;gap:14px">
-      <span class="clock" id="clock"></span>
-      <a href="/logout" style="font-size:11px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:4px 12px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">logout</a>
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark">NetPulse</span>
+      <span class="logo-sub">coordinator</span>
     </div>
-  </header>
 
-  <div class="status-strip">
-    <div class="status-item"><span class="label">Date</span><span class="value" id="sDate">—</span></div>
-    <div class="status-item"><span class="label">Started</span><span class="value" id="sStarted">—</span></div>
-    <div class="status-item"><span class="label">Total Downloaded</span><span class="value" id="sTotalDL">—</span></div>
-    <div class="status-item"><span class="label">Agents</span><span class="value" id="sAgents">—</span></div>
-    <div class="status-item"><span class="label">Plan Events</span><span class="value" id="sPlanCount">—</span></div>
-  </div>
+    <div class="nav">
+      <div class="nav-item active" onclick="navTo('overview',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
+        </svg>
+        Overview
+      </div>
+      <div class="nav-item" onclick="navTo('plan',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="14" height="14" rx="2"/>
+          <line x1="4" y1="5" x2="12" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/>
+        </svg>
+        Today's Plan
+      </div>
+      <div class="nav-item" onclick="navTo('quota',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6.5"/>
+          <path d="M8 8 L8 3 A5 5 0 0 1 13 8 Z" fill="currentColor" opacity=".3"/>
+        </svg>
+        Quota / Metrics
+      </div>
+      <div class="nav-item" onclick="navTo('history',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="1,12 5,6 8,9 11,4 15,8"/>
+        </svg>
+        Monthly History
+      </div>
+      <div class="nav-item" onclick="navTo('logs',this)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="1" width="12" height="14" rx="1.5"/>
+          <line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/>
+        </svg>
+        Logs
+      </div>
+    </div>
 
-  <div class="tab-bar">
-    <button class="tab active" onclick="switchTab(event,'overview')">Overview</button>
-    <button class="tab" onclick="switchTab(event,'plan')">Today's Plan</button>
-    <button class="tab" onclick="switchTab(event,'quota')">Quota / Metrics</button>
-    <button class="tab" onclick="switchTab(event,'history')">Monthly History</button>
-    <button class="tab" onclick="switchTab(event,'logs')">Logs</button>
-  </div>
-
-  <!-- Overview -->
-  <div id="tab-overview" class="tab-content active">
-    <div class="toolbar">
-      <button class="btn btn-accent" onclick="pingAgents()">
-        <span id="pingSpinner" class="spinner"></span>⚡ Test Connections
+    <div class="sidebar-footer">
+      <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+        <svg id="themeIcon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="3.5"/>
+          <line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/>
+          <line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/>
+          <line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/>
+          <line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/>
+        </svg>
       </button>
-      <button class="btn" onclick="refreshAll()">↻ Refresh All</button>
+      <a href="/logout" class="logout-link">logout</a>
     </div>
-    <div class="section-title">Agents</div>
-    <div class="agents-grid" id="agentsGrid"><div class="empty">Loading…</div></div>
+  </nav>
+
+  <!-- Mobile topbar -->
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleDrawer()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+      </svg>
+    </button>
+    <span class="topbar-logo">NetPulse</span>
+    <span class="topbar-clock" id="topbarClock"></span>
+    <button class="theme-btn" onclick="toggleTheme()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="3.5"/>
+        <line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/>
+        <line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/>
+      </svg>
+    </button>
   </div>
 
-  <!-- Plan -->
-  <div id="tab-plan" class="tab-content">
-    <div class="toolbar"><button class="btn" onclick="loadPlan()">↻ Refresh Plan</button></div>
-    <div class="panel">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>Agent</th><th>Source</th><th>Scheduled At</th><th>Status</th><th>Downloaded</th><th>Error</th></tr></thead>
-        <tbody id="planBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Drawer overlay -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
 
-  <!-- Quota -->
-  <div id="tab-quota" class="tab-content">
-    <div class="toolbar">
-      <button class="btn" onclick="refreshMetrics()">↻ Refresh Metrics</button>
-      <span id="metricSpinner" class="spinner"></span>
-    </div>
-    <div class="panel">
-      <table class="tbl">
-        <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th><th>Monthly Limit</th><th>Allowed</th><th>Used</th><th>Remaining</th><th>Quota Used</th></tr></thead>
-        <tbody id="metricsBody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Main -->
+  <main class="main">
 
-  <!-- History -->
-  <div id="tab-history" class="tab-content">
-    <div class="toolbar"><button class="btn" onclick="loadHistory()">↻ Refresh History</button></div>
-    <div class="panel">
-      <table class="tbl">
-        <thead><tr><th>Month</th><th>Source</th><th>Downloaded (GB)</th></tr></thead>
-        <tbody id="historyBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+    <!-- Overview -->
+    <div id="page-overview" class="page active">
+      <div class="status-bar" id="statusBar">
+        <div class="stat-chip"><span class="lbl">Date</span><span class="val" id="sDate">—</span></div>
+        <div class="stat-chip"><span class="lbl">Started</span><span class="val" id="sStarted">—</span></div>
+        <div class="stat-chip highlight"><span class="lbl">Downloaded</span><span class="val" id="sTotalDL">—</span></div>
+        <div class="stat-chip"><span class="lbl">Agents</span><span class="val" id="sAgents">—</span></div>
+        <div class="stat-chip"><span class="lbl">Plan</span><span class="val" id="sPlanCount">—</span></div>
+      </div>
 
-  <!-- Logs -->
-  <div id="tab-logs" class="tab-content">
-    <div class="toolbar">
-      <button class="btn" onclick="refreshLogs()">↻ Refresh</button>
-      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer">
-        <input type="checkbox" id="autoScrollChk" checked> auto-scroll
-      </label>
+      <div class="section-hdr">
+        <span class="section-title">Agents</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="pingAgents()">
+            <span id="pingSpinner" class="spin"></span>⚡ Test Connections
+          </button>
+          <button class="btn" onclick="refreshAll()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="agents-grid" id="agentsGrid"><div class="empty">Loading…</div></div>
     </div>
-    <div class="log-box" id="logBox"></div>
-  </div>
 
+    <!-- Plan -->
+    <div id="page-plan" class="page">
+      <div class="btn-group">
+        <button class="btn" onclick="loadPlan()">↻ Refresh Plan</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Agent</th><th>Source</th><th>Scheduled At</th><th>Status</th><th>Downloaded</th><th>Error</th></tr></thead>
+            <tbody id="planBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quota -->
+    <div id="page-quota" class="page">
+      <div class="btn-group">
+        <button class="btn" onclick="refreshMetrics()">↻ Refresh Metrics</button>
+        <span id="metricSpinner" class="spin" style="align-self:center"></span>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th><th>Limit</th><th>Allowed</th><th>Used</th><th>Remaining</th><th>Quota</th></tr></thead>
+            <tbody id="metricsBody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div id="page-history" class="page">
+      <div class="btn-group">
+        <button class="btn" onclick="loadHistory()">↻ Refresh History</button>
+      </div>
+      <div class="panel">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Month</th><th>Source</th><th>Downloaded (GB)</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div id="page-logs" class="page">
+      <div class="btn-group">
+        <button class="btn" onclick="refreshLogs()">↻ Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer;align-self:center">
+          <input type="checkbox" id="autoScrollChk" checked> auto-scroll
+        </label>
+      </div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+  </main>
 </div>
+
 <script>
-// Helpers
-const fmtBytes = b => !b ? '0 B' : b>=1e9 ? (b/1e9).toFixed(2)+' GB' : b>=1e6 ? (b/1e6).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
-const fmtTime  = s => s ? s.replace('T',' ').slice(0,19) : '—';
-const $        = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
+const fmtBytes = b => !b?'0 B':b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';
+const fmtTime  = s => s?s.replace('T',' ').slice(0,19):'—';
 
-setInterval(() => { $('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; }, 1000);
-$('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick() {
+  const t = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
+  const tc = $('topbarClock'); if(tc) tc.textContent = t;
+}
+setInterval(tick,1000); tick();
 
-// Tabs
-function switchTab(e, name) {
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
-  $('tab-'+name).classList.add('active');
-  e.target.classList.add('active');
-  ({ plan: loadPlan, quota: refreshMetrics, history: loadHistory, logs: refreshLogs }[name] || (()=>{}))();
+// ── Theme ──────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.dataset.theme==='dark' ? 'light' : 'dark';
+  html.dataset.theme = next;
+  localStorage.setItem('np-theme', next);
+}
+const saved = localStorage.getItem('np-theme');
+if (saved) document.documentElement.dataset.theme = saved;
+
+// ── Nav ────────────────────────────────────────────────────────────────────
+let currentPage = 'overview';
+function navTo(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  $('page-'+name).classList.add('active');
+  el.classList.add('active');
+  currentPage = name;
+  closeSidebar();
+  if(name==='plan')    loadPlan();
+  if(name==='quota')   refreshMetrics();
+  if(name==='history') loadHistory();
+  if(name==='logs')    refreshLogs();
 }
 
-// State
+// ── Mobile sidebar ─────────────────────────────────────────────────────────
+function toggleDrawer() {
+  const sb = $('sidebar'), ov = $('drawerOverlay');
+  const open = sb.classList.toggle('open');
+  ov.style.display = open ? 'block' : 'none';
+  requestAnimationFrame(()=>{ ov.classList.toggle('open', open); });
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  const ov = $('drawerOverlay');
+  ov.classList.remove('open');
+  setTimeout(()=>{ ov.style.display='none'; }, 250);
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
 let pingResults = {};
 
 async function loadState() {
-  const d = await fetch('/api/state').then(r=>r.json());
-  $('sDate').textContent    = d.date||'—';
-  $('sStarted').textContent = fmtTime(d.started_at);
-  $('sAgents').textContent  = Object.keys(d.agents||{}).length;
-  $('sPlanCount').textContent = (d.plan||[]).length;
-  let total = 0;
-  Object.values(d.agents||{}).forEach(a=>total+=a.downloaded_bytes);
+  const d = await fetch('/api/state').then(r=>r.json()).catch(()=>({}));
+  $('sDate').textContent     = d.date||'—';
+  $('sStarted').textContent  = fmtTime(d.started_at);
+  $('sAgents').textContent   = Object.keys(d.agents||{}).length;
+  $('sPlanCount').textContent= (d.plan||[]).length;
+  let total=0; Object.values(d.agents||{}).forEach(a=>total+=a.downloaded_bytes);
   $('sTotalDL').textContent = fmtBytes(total);
   renderAgents(d.agents||{}, d.plan||[]);
 }
 
 function renderAgents(agents, plan) {
   const grid = $('agentsGrid');
-  if (!Object.keys(agents).length) { grid.innerHTML='<div class="empty">No agents configured.</div>'; return; }
-  grid.innerHTML = Object.values(agents).map((a,i) => {
-    const pct = a.daily_limit_gb>0 ? Math.min(100, a.downloaded_bytes/(a.daily_limit_gb*1024**3)*100) : 0;
+  if(!Object.keys(agents).length){ grid.innerHTML='<div class="empty">No agents configured.</div>'; return; }
+  grid.innerHTML = Object.values(agents).map((a,i)=>{
+    const pct = a.daily_limit_gb>0 ? Math.min(100,a.downloaded_bytes/(a.daily_limit_gb*1024**3)*100) : 0;
     const ping = pingResults[a.label];
-    const dotCls = ping ? (ping.ok?'ok':'fail') : '';
+    const dotCls = ping?(ping.ok?'ok':'fail'):'';
     const ap = plan.filter(e=>e.agent_label===a.label);
     const done = ap.filter(e=>e.status==='done').length;
-    return `<div class="agent-card" style="animation-delay:${i*.06}s">
-      <div class="agent-header">
+    const running = ap.filter(e=>e.status==='running').length;
+    return `<div class="agent-card" style="animation-delay:${i*.07}s">
+      <div class="card-head">
         <div>
-          <div class="agent-label">${a.label}</div>
-          <div class="agent-host">limit: ${a.daily_limit_gb} GB/day</div>
-          ${ping?`<div class="agent-host" style="margin-top:3px;color:${ping.ok?'var(--green)':'var(--red)'}">${ping.message}</div>`:''}
+          <div class="card-name">${a.label}</div>
+          <div class="card-sub">${a.daily_limit_gb} GB / day</div>
+          ${ping?`<div class="card-ping" style="color:${ping.ok?'var(--green)':'var(--red)'}">${ping.message}</div>`:''}
         </div>
-        <div class="conn-dot ${dotCls}"></div>
+        <div class="conn-indicator ${dotCls}"></div>
       </div>
-      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-      <div class="agent-stats">
-        <div class="stat"><div class="stat-val">${fmtBytes(a.downloaded_bytes)}</div><div class="stat-label">Downloaded</div></div>
-        <div class="stat stat-ok"><div class="stat-val">${a.downloads_ok}</div><div class="stat-label">OK</div></div>
-        <div class="stat stat-fail"><div class="stat-val">${a.downloads_fail}</div><div class="stat-label">Failed</div></div>
-        <div class="stat"><div class="stat-val">${ap.length?`${done}/${ap.length}`:'—'}</div><div class="stat-label">Plan</div></div>
-        <div class="stat"><div class="stat-val">${pct.toFixed(1)}%</div><div class="stat-label">Progress</div></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div class="card-stats">
+        <div class="cs"><div class="cs-val">${fmtBytes(a.downloaded_bytes)}</div><div class="cs-label">DL'd</div></div>
+        <div class="cs ok"><div class="cs-val">${a.downloads_ok}</div><div class="cs-label">OK</div></div>
+        <div class="cs bad"><div class="cs-val">${a.downloads_fail}</div><div class="cs-label">Failed</div></div>
+        <div class="cs"><div class="cs-val">${ap.length?`${done}/${ap.length}`:'—'}</div><div class="cs-label">${running?`▶ ${running} live`:'Plan'}</div></div>
       </div>
     </div>`;
   }).join('');
 }
 
-// Ping
+// ── Ping ───────────────────────────────────────────────────────────────────
 async function pingAgents() {
-  $('pingSpinner').classList.add('active');
+  $('pingSpinner').classList.add('on');
   try {
     const r = await fetch('/api/ping-agents').then(r=>r.json());
     r.forEach(x=>{ pingResults[x.label]={ok:x.ok,message:x.message}; });
     await loadState();
-  } finally { $('pingSpinner').classList.remove('active'); }
+  } finally { $('pingSpinner').classList.remove('on'); }
 }
 
-// Plan
+// ── Plan ───────────────────────────────────────────────────────────────────
 async function loadPlan() {
-  const rows = await fetch('/api/plan').then(r=>r.json());
+  const rows = await fetch('/api/plan').then(r=>r.json()).catch(()=>[]);
   const tb = $('planBody');
-  if (!rows.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No plan yet for today.</td></tr>'; return; }
-  tb.innerHTML = rows.map((r,i)=>{
-    const pc = {pending:'pill-pending',running:'pill-running',done:'pill-done',failed:'pill-failed'}[r.status]||'pill-pending';
-    return `<tr>
-      <td style="color:var(--muted)">${i+1}</td>
-      <td>${r.agent_label}</td>
-      <td>${r.source_label}</td>
-      <td style="color:var(--muted);font-size:11px">${fmtTime(r.scheduled_at)}</td>
-      <td><span class="status-pill ${pc}">${r.status}</span></td>
-      <td>${r.bytes_downloaded>0?fmtBytes(r.bytes_downloaded):'—'}</td>
-      <td style="color:var(--red);font-size:11px">${r.error||''}</td>
-    </tr>`;
-  }).join('');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="empty">No plan yet for today.</td></tr>'; return; }
+  const pc = {pending:'p-pending',running:'p-running',done:'p-done',failed:'p-failed'};
+  tb.innerHTML = rows.map((r,i)=>`<tr>
+    <td class="dim">${i+1}</td>
+    <td>${r.agent_label}</td>
+    <td>${r.source_label}</td>
+    <td class="dim">${fmtTime(r.scheduled_at)}</td>
+    <td><span class="pill ${pc[r.status]||'p-pending'}">${r.status}</span></td>
+    <td>${r.bytes_downloaded>0?fmtBytes(r.bytes_downloaded):'—'}</td>
+    <td style="color:var(--red);font-size:11px">${r.error||''}</td>
+  </tr>`).join('');
 }
 
-// Metrics
+// ── Metrics ────────────────────────────────────────────────────────────────
 async function refreshMetrics() {
-  $('metricSpinner').classList.add('active');
+  $('metricSpinner').classList.add('on');
   try {
-    const data = await fetch('/api/metrics').then(r=>r.json());
+    const data = await fetch('/api/metrics').then(r=>r.json()).catch(()=>[]);
     const tb = $('metricsBody');
-    if (!data.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No sources configured.</td></tr>'; return; }
+    if(!data.length){ tb.innerHTML='<tr><td colspan="10" class="empty">No sources.</td></tr>'; return; }
     tb.innerHTML = data.map(m=>{
-      let quotaBar='', quotaPct='—';
-      if (!m.is_monitor && m.monthly_limit_gb>0) {
-        const pct = m.monthly_used_gb/m.monthly_allowed_gb*100;
-        const cls = pct>90?'quota-crit':pct>70?'quota-warn':'quota-ok';
-        quotaBar = `<div class="quota-wrap"><div class="quota-bar ${cls}" style="width:${Math.min(100,pct).toFixed(1)}%"></div></div>`;
-        quotaPct = pct.toFixed(1)+'%';
+      let qBar='', qPct='—';
+      if(!m.is_monitor && m.monthly_limit_gb>0){
+        const pct = (m.monthly_used_gb||0)/m.monthly_allowed_gb*100;
+        const cls = pct>90?'q-crit':pct>70?'q-warn':'q-ok';
+        qBar=`<div class="quota-track"><div class="quota-fill ${cls}" style="width:${Math.min(100,pct).toFixed(1)}%"></div></div>`;
+        qPct=pct.toFixed(1)+'%';
       }
       return `<tr>
-        <td>${m.label}${m.is_monitor?'<span class="monitor-badge">monitor</span>':''}</td>
-        <td style="color:var(--muted);font-size:11px">${m.is_monitor?'monitor':'source'}</td>
-        <td class="${m.reachable?'up':'down'}">${m.reachable?'● UP':'✕ DOWN'}</td>
+        <td>${m.label}${m.is_monitor?'<span class="badge">monitor</span>':''}</td>
+        <td class="dim">${m.is_monitor?'monitor':'source'}</td>
+        <td class="${m.reachable?'up':'dn'}">${m.reachable?'● UP':'✕ DOWN'}</td>
         <td class="rx">${m.reachable?m.rx_gb.toFixed(2):'—'}</td>
         <td class="tx">${m.reachable?m.tx_gb.toFixed(2):'—'}</td>
-        <td>${!m.is_monitor&&m.monthly_limit_gb>0?m.monthly_limit_gb+' GB':'—'}</td>
-        <td>${!m.is_monitor&&m.monthly_allowed_gb>0?m.monthly_allowed_gb.toFixed(1)+' GB':'—'}</td>
+        <td class="dim">${!m.is_monitor&&m.monthly_limit_gb>0?m.monthly_limit_gb+' GB':'—'}</td>
+        <td class="dim">${!m.is_monitor&&m.monthly_allowed_gb>0?m.monthly_allowed_gb.toFixed(1)+' GB':'—'}</td>
         <td>${!m.is_monitor?(m.monthly_used_gb||0).toFixed(2)+' GB':'—'}</td>
         <td>${!m.is_monitor&&m.monthly_limit_gb>0?(m.monthly_remaining_gb||0).toFixed(2)+' GB':'—'}</td>
-        <td>${quotaBar} ${quotaPct}</td>
+        <td>${qBar}<span style="font-size:11px">${qPct}</span></td>
       </tr>`;
     }).join('');
-  } finally { $('metricSpinner').classList.remove('active'); }
+  } finally { $('metricSpinner').classList.remove('on'); }
 }
 
-// History
+// ── History ────────────────────────────────────────────────────────────────
 async function loadHistory() {
-  const rows = await fetch('/api/monthly-history').then(r=>r.json());
+  const rows = await fetch('/api/monthly-history').then(r=>r.json()).catch(()=>[]);
   const tb = $('historyBody');
-  if (!rows.length) { tb.innerHTML='<tr><td colspan="3" class="empty">No history yet.</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="3" class="empty">No history yet.</td></tr>'; return; }
   tb.innerHTML = rows.map(r=>`<tr>
-    <td>${r.year_month}</td>
-    <td>${r.source_label}</td>
+    <td>${r.year_month}</td><td>${r.source_label}</td>
     <td class="rx">${(r.downloaded_bytes/1024**3).toFixed(3)} GB</td>
   </tr>`).join('');
 }
 
-// Logs
+// ── Logs ───────────────────────────────────────────────────────────────────
 let lastLogCount=0;
 async function refreshLogs() {
-  const d = await fetch('/api/logs').then(r=>r.json());
-  if (d.lines.length===lastLogCount) return;
+  const d = await fetch('/api/logs').then(r=>r.json()).catch(()=>({lines:[]}));
+  if(d.lines.length===lastLogCount) return;
   lastLogCount=d.lines.length;
   const box=$('logBox');
   box.innerHTML=d.lines.map(l=>{
-    let cls='info';
-    if(l.includes('| WARNING ')) cls='warn';
-    else if(l.includes('| ERROR ')) cls='error';
-    else if(l.includes('| DEBUG ')) cls='debug';
-    return `<div class="log-line ${cls}">${l}</div>`;
+    let c='info';
+    if(l.includes('| WARNING '))c='warn';
+    else if(l.includes('| ERROR '))c='error';
+    else if(l.includes('| DEBUG '))c='debug';
+    return `<div class="ll ${c}">${l}</div>`;
   }).join('');
   if($('autoScrollChk').checked) box.scrollTop=box.scrollHeight;
 }
 
+// ── Refresh all ────────────────────────────────────────────────────────────
 async function refreshAll() { await Promise.all([loadState(), refreshMetrics()]); }
 
 refreshAll();
