@@ -20,6 +20,10 @@ pause_probability = 0.3
 pause_range = [10, 90]
 max_concurrent = 2
 
+# Retry settings for failed downloads
+max_retries = 3
+retry_delay_range = [30, 120]
+
 [network]
 verify_ssl = false           # false for self-signed certificates
 

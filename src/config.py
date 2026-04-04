@@ -1,5 +1,5 @@
 """
-src/config.py – Load and validate all settings from config.toml.
+    src/config.py – Load and validate all settings from config.toml.
 """
 
 from __future__ import annotations
@@ -72,6 +72,8 @@ class Config:
     download_pause_probability: float
     download_pause_range: Tuple[int, int]
     max_concurrent_downloads: int
+    download_max_retries: int
+    download_retry_delay_range: Tuple[int, int]
 
     # Logging
     log_level: str
@@ -108,17 +110,12 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
 
     panel    = data.get("panel", {})
     sched    = data.get("scheduler", {})
-    total_days = int(sched.get("days", 0))
     dl       = data.get("download", {})
     network  = data.get("network", {})
     logging_ = data.get("logging", {})
 
     sources = [
-        DownloadSource(
-            label=s["label"],
-            download_url=s["download_url"],
-            metric_url=s["metric_url"]
-        )
+        DownloadSource(label=s["label"], download_url=s["download_url"], metric_url=s["metric_url"])
         for s in data.get("sources", [])
     ]
 
@@ -141,11 +138,12 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         for a in data.get("agents", [])
     ]
 
-    pause_range = dl.get("pause_range", [10, 90])
-    weights     = sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])
+    pause_range       = dl.get("pause_range", [10, 90])
+    retry_delay_range = dl.get("retry_delay_range", [30, 120])
+    weights           = sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])
 
     return Config(
-        total_days=total_days,
+        total_days=int(sched.get("days", 0)),
         panel_host=panel.get("host", "127.0.0.1"),
         panel_port=int(panel.get("port", 7070)),
         secret_key=panel.get("secret_key", "change-me"),
@@ -160,6 +158,8 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         download_pause_probability=float(dl.get("pause_probability", 0.3)),
         download_pause_range=(int(pause_range[0]), int(pause_range[1])),
         max_concurrent_downloads=int(dl.get("max_concurrent", 2)),
+        download_max_retries=int(dl.get("max_retries", 3)),
+        download_retry_delay_range=(int(retry_delay_range[0]), int(retry_delay_range[1])),
         log_level=str(logging_.get("level", "INFO")),
         log_file=str(logging_.get("file", "logs/netpulse.log")),
         verify_ssl=bool(network.get("verify_ssl", False)),
