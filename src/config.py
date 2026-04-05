@@ -57,6 +57,7 @@ class Config:
     secret_key: str
     panel_username: str
     panel_password: str
+    connection_test_url: str
 
     # Sources & agents
     download_sources: List[DownloadSource]
@@ -163,4 +164,5 @@ def load_config(path: Path = _CONFIG_FILE) -> Config:
         log_level=str(logging_.get("level", "INFO")),
         log_file=str(logging_.get("file", "logs/netpulse.log")),
         verify_ssl=bool(network.get("verify_ssl", False)),
+        connection_test_url=network.get("connection_test_url", "https://speed.hetzner.de/10MB.bin"),
     )

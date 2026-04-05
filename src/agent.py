@@ -27,11 +27,25 @@ from src.scheduler import generate_event_times, seconds_until
 log = get_logger("agent")
 
 
-# ── Connection test ───────────────────────────────────────────────────────────
+# Connection test
 
-async def test_agent_connection(agent: AgentConfig) -> tuple[bool, str]:
+async def test_agent_connection(agent: AgentConfig, cfg: Config) -> tuple[bool, str]:
     if agent.is_local:
-        return True, "localhost – no SSH needed"
+        try:
+            import httpx
+            async with httpx.AsyncClient(verify=cfg.verify_ssl, timeout=15.0) as client:
+                async with client.stream("GET", cfg.connection_test_url) as resp:
+                    resp.raise_for_status()
+                    downloaded = 0
+                    async for chunk in resp.aiter_bytes(32 * 1024):
+                        downloaded += len(chunk)
+                        if downloaded >= 10 * 1024 * 1024:
+                            break
+            return True, f"localhost – download OK ({downloaded // 1024 // 1024} MB received)"
+        except Exception as exc:
+            error = repr(exc) if not str(exc).strip() else str(exc)
+            return False, f"localhost – download failed: {error}"
+
     try:
         async with asyncssh.connect(
             host=agent.host,
@@ -40,10 +54,20 @@ async def test_agent_connection(agent: AgentConfig) -> tuple[bool, str]:
             password=agent.password,
             known_hosts=None,
             connect_timeout=60,
-        ):
-            return True, "SSH connection successful"
+        ) as conn:
+            no_check = "--no-check-certificate" if not cfg.verify_ssl else ""
+            proc = await conn.run(
+                f"wget -q --limit-rate=5m {no_check} -O /dev/null '{cfg.connection_test_url}' 2>&1 && echo OK",
+                timeout=60,
+            )
+            if proc.returncode == 0:
+                return True, "SSH OK – download test passed"
+            else:
+                error = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
+                return False, f"SSH OK – download failed: {error}"
     except Exception as exc:
-        return False, str(exc)
+        error = repr(exc) if not str(exc).strip() else str(exc)
+        return False, f"SSH failed: {error}"
 
 
 # Remote download via SSH
@@ -135,7 +159,7 @@ async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Conf
         log.info("Agent finished daily cycle | agent=%s", agent.label)
         return
 
-    # Build new plan 
+    # Build new plan
     variance     = 1.0 + random.uniform(-cfg.daily_variance, cfg.daily_variance)
     target_bytes = int(agent.daily_limit_gb * 1024 ** 3 * variance)
     approx_size  = 1 * 1024 ** 3

@@ -25,6 +25,7 @@ max_retries = 3
 retry_delay_range = [30, 120]
 
 [network]
+connection_test_url = "https://speed.hetzner.de/10MB.bin"
 verify_ssl = false           # false for self-signed certificates
 
 [logging]
