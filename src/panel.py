@@ -144,7 +144,7 @@ def create_app(cfg: Config, state: State) -> FastAPI:
     @app.get("/api/ping-agents")
     async def api_ping_agents(request: Request):
         if _guard(request): return JSONResponse({"error": "unauthorized"}, status_code=401)
-        tasks = [test_agent_connection(a) for a in cfg.agents]
+        tasks = [test_agent_connection(a, cfg) for a in cfg.agents]
         results_raw = await asyncio.gather(*tasks)
         return JSONResponse([
             {"label": a.label, "host": a.host, "ok": ok, "message": msg}
