@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List
 from src import storage
 from src.state import State
 from src.config import Config
@@ -59,6 +58,7 @@ async def run_cycle(cfg: Config, state: State) -> None:
         log.info("Agent priority | label=%s | remaining_gb=%.2f", a.label, agent_remaining_gb(a))
 
     state.init(cfg.agents)
+    state.load_plan_from_db()
 
     tasks = [run_agent(agent, cfg.download_sources, cfg, state) for agent in sorted_agents]
     await asyncio.gather(*tasks)
