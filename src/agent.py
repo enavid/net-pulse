@@ -99,13 +99,15 @@ async def _run_remote_download(
     retry_delay_range: tuple[int, int] = (30, 120),
 ) -> DownloadResult:
     result = DownloadResult(url=url, agent_label=agent.label)
-    speed_arg = f"--limit-rate={speed_cap // 1024}k" if speed_cap > 0 else ""
-    no_check  = "--no-check-certificate" if not verify_ssl else ""
-    cmd = f"wget -q {speed_arg} {no_check} -O /dev/null '{url}' && echo OK"
+    speed_arg = f"--limit-rate {speed_cap}" if speed_cap > 0 else ""
+    no_check  = "--insecure" if not verify_ssl else ""
+    cmd = f"curl -s {no_check} {speed_arg} -o /dev/null '{url}' && echo OK"
 
     log.info("SSH download starting | agent=%s | host=%s | url=%s | max_retries=%d",
              agent.label, agent.host, url, max_retries)
+    log.debug("SSH download command | agent=%s | cmd=%s", agent.label, cmd)
 
+    attempt = 0  # fix: initialise before loop so it's always assigned
     for attempt in range(1, max_retries + 1):
         if attempt > 1:
             delay = random.randint(*retry_delay_range)
@@ -116,7 +118,11 @@ async def _run_remote_download(
         try:
             if random.random() < pause_probability:
                 secs = random.randint(*pause_range)
+                log.debug("Pre-download pause | agent=%s | secs=%d", agent.label, secs)
                 await asyncio.sleep(secs)
+
+            log.info("SSH connecting | agent=%s | host=%s:%d | attempt=%d/%d",
+                     agent.label, agent.host, agent.port, attempt, max_retries)
 
             async with asyncssh.connect(
                 host=agent.host,
@@ -126,20 +132,25 @@ async def _run_remote_download(
                 known_hosts=None,
                 connect_timeout=15,
             ) as conn:
+                log.info("SSH connected | agent=%s | executing download", agent.label)
                 proc = await conn.run(cmd, timeout=3600)
                 if proc.returncode == 0:
                     result.success = True
                     result.bytes_downloaded = file_size_bytes
                     result.duration_seconds = time.monotonic() - start
                     result.error = None
-                    log.info("SSH download complete | agent=%s | attempt=%d/%d | duration=%.1fs",
-                             agent.label, attempt, max_retries, result.duration_seconds)
+                    log.info("SSH download complete | agent=%s | attempt=%d/%d | duration=%.1fs | bytes=%d",
+                             agent.label, attempt, max_retries, result.duration_seconds, result.bytes_downloaded)
                     break
                 else:
-                    result.error = proc.stderr.strip() or f"exit code {proc.returncode}"
+                    # decode bytes to str explicitly
+                    stderr = proc.stderr.decode() if isinstance(proc.stderr, bytes) else (proc.stderr or "")
+                    stdout = proc.stdout.decode() if isinstance(proc.stdout, bytes) else (proc.stdout or "")
+                    result.error = stderr.strip() or stdout.strip() or f"exit code {proc.returncode}"
                     result.duration_seconds = time.monotonic() - start
                     log.warning("SSH download failed | agent=%s | attempt=%d/%d | error=%s",
                                 agent.label, attempt, max_retries, result.error)
+
         except Exception as exc:
             result.error = repr(exc) if not str(exc).strip() else str(exc)
             result.duration_seconds = time.monotonic() - start
