@@ -61,7 +61,7 @@ async def test_agent_connection(agent: AgentConfig, cfg: Config) -> tuple[bool, 
             username=agent.user,
             password=agent.password,
             known_hosts=None,
-            connect_timeout=60,
+            connect_timeout=90,
         ) as conn:
             no_check = "--insecure" if not cfg.verify_ssl else ""
             log.info("SSH connected | agent=%s | running download test | url=%s", agent.label, cfg.connection_test_url)
@@ -130,7 +130,7 @@ async def _run_remote_download(
                 username=agent.user,
                 password=agent.password,
                 known_hosts=None,
-                connect_timeout=15,
+                connect_timeout=90,
             ) as conn:
                 log.info("SSH connected | agent=%s | executing download", agent.label)
                 proc = await conn.run(cmd, timeout=3600)
