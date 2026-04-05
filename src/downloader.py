@@ -49,7 +49,6 @@ async def _attempt_download(
         "Connection": "keep-alive",
     }
 
-    log.info("Local download started | agent=%s | url=%s", agent_label, url)
     try:
         async with httpx.AsyncClient(verify=verify_ssl, timeout=None, headers=headers) as client:
             async with client.stream("GET", url) as resp:
