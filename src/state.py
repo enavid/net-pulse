@@ -1,12 +1,12 @@
 """
-    src/state.py – Shared in-memory state (daily cycle). SQLite handles long-term persistence via storage.py.
+    src/state.py – Shared in-memory state. Loads from daily_stats DB on startup so data survives restarts.
 """
 
 from __future__ import annotations
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, List, Optional
 from dataclasses import asdict, dataclass, field
 
@@ -29,12 +29,11 @@ class AgentStats:
 
 @dataclass
 class PlannedEventView:
-    """Lightweight view of a planned event for the UI."""
     id: int
     agent_label: str
     source_label: str
     scheduled_at: str
-    status: str          # pending | running | done | failed
+    status: str
     bytes_downloaded: int
     error: Optional[str]
 
@@ -47,15 +46,70 @@ class State:
     plan: List[PlannedEventView] = field(default_factory=list)
 
     def init(self, agent_configs) -> None:
-        self.date = datetime.now().strftime("%Y-%m-%d")
+        """
+        Initialize state for a new cycle.
+        Loads existing today's stats from DB so data survives restarts.
+        """
+        from src import storage
+        today = date.today().isoformat()
+        self.date = today
         self.started_at = datetime.now().isoformat()
+
+        db_stats = {r["agent_label"]: r for r in storage.get_daily_stats(today)}
+
         for a in agent_configs:
-            self.agents[a.label] = AgentStats(label=a.label, daily_limit_gb=a.daily_limit_gb)
+            if a.label in db_stats:
+                row = db_stats[a.label]
+                self.agents[a.label] = AgentStats(
+                    label=a.label,
+                    daily_limit_gb=a.daily_limit_gb,
+                    downloaded_bytes=row["downloaded_bytes"],
+                    downloads_ok=row["downloads_ok"],
+                    downloads_fail=row["downloads_fail"],
+                    last_download_at=row["last_download_at"],
+                )
+            else:
+                self.agents[a.label] = AgentStats(
+                    label=a.label,
+                    daily_limit_gb=a.daily_limit_gb,
+                )
+        self._save()
+
+    def sync_agents_from_db(self) -> None:
+        """
+        Reload agent list from DB without resetting stats.
+        Called after UI adds/removes an agent so overview reflects changes immediately.
+        """
+        from src import storage
+        today    = date.today().isoformat()
+        db_stats = {r["agent_label"]: r for r in storage.get_daily_stats(today)}
+        db_agents = {r["label"]: r for r in storage.get_agents(enabled_only=True)}
+
+        # Add new agents not yet in state
+        for label, row in db_agents.items():
+            if label not in self.agents:
+                stats = db_stats.get(label)
+                self.agents[label] = AgentStats(
+                    label=label,
+                    daily_limit_gb=row["daily_limit_gb"],
+                    downloaded_bytes=stats["downloaded_bytes"] if stats else 0,
+                    downloads_ok=stats["downloads_ok"] if stats else 0,
+                    downloads_fail=stats["downloads_fail"] if stats else 0,
+                    last_download_at=stats["last_download_at"] if stats else None,
+                )
+            else:
+                # Update daily_limit_gb in case it changed
+                self.agents[label].daily_limit_gb = row["daily_limit_gb"]
+
+        # Remove agents deleted from DB
+        for label in list(self.agents.keys()):
+            if label not in db_agents:
+                del self.agents[label]
+
         self._save()
 
     def load_plan_from_db(self) -> None:
-        """Reload today's plan from SQLite into memory for the UI."""
-        from . import storage
+        from src import storage
         rows = storage.get_today_events()
         self.plan = [
             PlannedEventView(
@@ -71,6 +125,7 @@ class State:
         ]
 
     def record_download(self, agent_label: str, bytes_dl: int, success: bool) -> None:
+        from src import storage
         if agent_label not in self.agents:
             return
         s = self.agents[agent_label]
@@ -80,6 +135,8 @@ class State:
         else:
             s.downloads_fail += 1
         s.last_download_at = datetime.now().isoformat()
+        # Persist to DB so restart doesn't lose data
+        storage.upsert_daily_stats(agent_label, bytes_dl, success)
         self._save()
 
     def to_dict(self) -> dict:

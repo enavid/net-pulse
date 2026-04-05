@@ -4,691 +4,859 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NetPulse</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
-/* ── Theme tokens ── */
-[data-theme="dark"] {
-  --bg:        #080b0f;
-  --bg2:       #0d1117;
-  --surface:   #111722;
-  --surface2:  #161e2e;
-  --border:    #1f2a3c;
-  --border2:   #2a3a52;
-  --text:      #e2e8f0;
-  --text2:     #8899aa;
-  --text3:     #4a5a70;
-  --accent:    #00d4f0;
-  --accent-glow: rgba(0,212,240,.18);
-  --accent2:   #8b5cf6;
-  --green:     #10b981;
-  --red:       #f43f5e;
-  --yellow:    #f59e0b;
-  --grid-color:#1a2232;
-  --shadow:    0 8px 32px rgba(0,0,0,.6);
-  --invert-logo: 0;
-}
-[data-theme="light"] {
-  --bg:        #f0f4f8;
-  --bg2:       #e8edf3;
-  --surface:   #ffffff;
-  --surface2:  #f8fafc;
-  --border:    #d1dbe8;
-  --border2:   #b8c8d8;
-  --text:      #0f1923;
-  --text2:     #4a6070;
-  --text3:     #9ab0c0;
-  --accent:    #0095b0;
-  --accent-glow: rgba(0,149,176,.12);
-  --accent2:   #6d28d9;
-  --green:     #059669;
-  --red:       #e11d48;
-  --yellow:    #d97706;
-  --grid-color:#dde6ef;
-  --shadow:    0 4px 20px rgba(0,0,0,.08);
-  --invert-logo: 1;
-}
+[data-theme="dark"]{--bg:#080b0f;--bg2:#0d1117;--surface:#111722;--surface2:#161e2e;--border:#1f2a3c;--border2:#2a3a52;--text:#e2e8f0;--text2:#8899aa;--text3:#4a5a70;--accent:#00d4f0;--aglow:rgba(0,212,240,.15);--accent2:#8b5cf6;--green:#10b981;--red:#f43f5e;--yellow:#f59e0b;--grid:#1a2232;--shadow:0 8px 32px rgba(0,0,0,.6)}
+[data-theme="light"]{--bg:#f0f4f8;--bg2:#e8edf3;--surface:#fff;--surface2:#f8fafc;--border:#d1dbe8;--border2:#b8c8d8;--text:#0f1923;--text2:#4a6070;--text3:#9ab0c0;--accent:#0095b0;--aglow:rgba(0,149,176,.12);--accent2:#6d28d9;--green:#059669;--red:#e11d48;--yellow:#d97706;--grid:#dde6ef;--shadow:0 4px 20px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-height:100vh;display:flex;transition:background .3s,color .3s}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;opacity:.5;z-index:0}
 
-* { box-sizing:border-box; margin:0; padding:0; }
-html { scroll-behavior: smooth; }
+/* Sidebar */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:width .25s,transform .25s}
+.sidebar.collapsed{width:56px}
+.sidebar.collapsed .nav-label,.sidebar.collapsed .logo-sub,.sidebar.collapsed .logo-word,.sidebar.collapsed .sf-text{display:none}
+.sidebar-logo{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.logo-mark{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent);white-space:nowrap}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-top:1px}
+.collapse-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.collapse-btn:hover{border-color:var(--accent);color:var(--accent)}
+.nav{flex:1;padding:10px 0;overflow-y:auto;overflow-x:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:var(--text2);font-size:11px;letter-spacing:.3px;border-left:2px solid transparent;transition:all .15s;white-space:nowrap;overflow:hidden}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--aglow)}
+.nav-item.active svg{opacity:1}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;overflow:hidden}
+.theme-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+.logout-link{flex:1;text-align:center;font-size:11px;color:var(--text2);text-decoration:none;padding:5px 8px;border:1px solid var(--border);border-radius:5px;transition:all .15s;white-space:nowrap}
+.logout-link:hover{border-color:var(--red);color:var(--red)}
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  min-height: 100vh;
-  transition: background .3s, color .3s;
-}
+/* Mobile topbar */
+.topbar{display:none;position:sticky;top:0;z-index:90;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;align-items:center;gap:12px}
+.hamburger{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.topbar-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent);flex:1}
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;opacity:0;transition:opacity .25s}
+.drawer-overlay.open{opacity:1}
 
-body::before {
-  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-  background-image:
-    linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: .5;
-  transition: opacity .3s;
-}
+/* Main */
+.main{margin-left:220px;flex:1;position:relative;z-index:1;transition:margin-left .25s;min-height:100vh;display:flex;flex-direction:column}
+.sidebar.collapsed~.main{margin-left:56px}
+.page{display:none;padding:24px;animation:fadeIn .2s ease;flex:1}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── Layout ── */
-.app { position:relative; z-index:1; display:flex; flex-direction:column; min-height:100vh; }
+/* Refresh bar */
+.refresh-bar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;color:var(--text2);position:sticky;top:0;z-index:50}
+.refresh-bar select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 8px;font-family:inherit;font-size:11px;cursor:pointer}
+.ri{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pg 2s infinite}
+@keyframes pg{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── Sidebar nav (desktop) ── */
-.sidebar {
-  position: fixed; top:0; left:0; bottom:0; width:220px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction:column;
-  z-index: 100;
-  transition: transform .3s, background .3s;
-}
+/* Status chips */
+.status-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 14px;display:flex;align-items:center;gap:6px;font-size:11px}
+.stat-chip .lbl{color:var(--text2)}.stat-chip .val{color:var(--text);font-weight:500}
+.stat-chip.hi .val{color:var(--accent)}
 
-.sidebar-logo {
-  padding: 24px 20px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.logo-mark {
-  font-family: 'Syne', sans-serif;
-  font-size: 22px; font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--accent);
-  display: block;
-}
-.logo-sub { font-size:10px; color:var(--text2); letter-spacing:1.5px; text-transform:uppercase; margin-top:2px; }
+/* Layout helpers */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2)}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
 
-.nav { flex:1; padding:12px 0; overflow-y:auto; }
-.nav-item {
-  display:flex; align-items:center; gap:10px;
-  padding:10px 20px; cursor:pointer;
-  color:var(--text2); font-size:12px; letter-spacing:.3px;
-  border-left: 2px solid transparent;
-  transition: all .15s; user-select:none;
-}
-.nav-item svg { width:15px; height:15px; opacity:.7; flex-shrink:0; }
-.nav-item:hover { color:var(--text); background:var(--surface2); }
-.nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--accent-glow); }
-.nav-item.active svg { opacity:1; }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--aglow);border-color:var(--accent);color:var(--accent);font-weight:500}
+.btn-danger{border-color:var(--red);color:var(--red);background:rgba(244,63,94,.08)}.btn-danger:hover{background:rgba(244,63,94,.15)}
+.btn-sm{padding:4px 10px;font-size:10px}
+.btn-icon{padding:5px 8px}
 
-.sidebar-footer {
-  padding:16px 20px;
-  border-top: 1px solid var(--border);
-  display:flex; align-items:center; gap:8px;
-}
+/* Agent cards */
+.agents-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:28px}
+.agent-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;transition:border-color .2s,box-shadow .2s;animation:slideUp .35s ease both;position:relative;overflow:hidden}
+.agent-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),var(--accent));opacity:0;transition:opacity .2s}
+.agent-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}.agent-card:hover::before{opacity:1}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.card-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.card-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.card-actions{display:flex;gap:4px;flex-shrink:0;margin-top:2px}
+.conn-dot{width:10px;height:10px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s,box-shadow .3s}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 8px var(--green)}.conn-dot.fail{background:var(--red)}
+.prog-track{background:var(--border);border-radius:4px;height:4px;margin-bottom:14px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .8s cubic-bezier(.4,0,.2,1)}
+.card-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cs{text-align:center}.cs-val{font-size:16px;font-weight:700;color:var(--accent);line-height:1.2}
+.cs-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.cs.ok .cs-val{color:var(--green)}.cs.bad .cs-val{color:var(--red)}
 
-/* Theme toggle */
-.theme-btn {
-  width:32px; height:32px; border-radius:8px;
-  border:1px solid var(--border2); background:var(--surface2);
-  color:var(--text2); cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .15s; flex-shrink:0;
-}
-.theme-btn:hover { border-color:var(--accent); color:var(--accent); }
+/* Panel / Table */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;min-width:400px}
+.tbl th{text-align:left;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:400}
+.tbl td{padding:9px 8px 9px 0;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.up{color:var(--green)}.dn{color:var(--red)}.rx{color:var(--accent);font-weight:600}.tx{color:var(--accent2);font-weight:600}
+.dim{color:var(--text2);font-size:11px}
 
-.logout-link {
-  flex:1; text-align:center;
-  font-size:11px; color:var(--text2);
-  text-decoration:none; padding:6px 10px;
-  border:1px solid var(--border); border-radius:6px;
-  transition:all .15s;
-}
-.logout-link:hover { border-color:var(--red); color:var(--red); }
+/* Quota */
+.quota-track{background:var(--border);border-radius:3px;height:6px;min-width:70px;overflow:hidden;margin-bottom:3px}
+.quota-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.q-ok{background:var(--green)}.q-warn{background:var(--yellow)}.q-crit{background:var(--red)}
 
-/* ── Main content ── */
-.main {
-  margin-left:220px;
-  padding: 0;
-  flex:1;
-  transition: margin-left .3s;
-}
+/* Pills */
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.p-pending{background:rgba(74,90,112,.15);color:var(--text2)}
+.p-running{background:rgba(245,158,11,.12);color:var(--yellow);animation:blink 1.4s infinite}
+.p-done{background:rgba(16,185,129,.12);color:var(--green)}
+.p-failed{background:rgba(244,63,94,.12);color:var(--red)}
+.p-imm{background:rgba(139,92,246,.12);color:var(--accent2)}
+@keyframes blink{50%{opacity:.5}}
+.badge{display:inline-block;padding:1px 7px;background:rgba(139,92,246,.15);color:var(--accent2);border-radius:4px;font-size:9px;margin-left:4px}
 
-/* ── Top bar (mobile) ── */
-.topbar {
-  display:none;
-  position:sticky; top:0; z-index:90;
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  padding:12px 16px;
-  align-items:center; gap:12px;
-}
-.hamburger {
-  width:32px; height:32px; border-radius:6px;
-  border:1px solid var(--border); background:transparent;
-  color:var(--text2); cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
-}
-.topbar-logo { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--accent); flex:1; }
-.topbar-clock { font-size:11px; color:var(--text3); }
+/* Log */
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;height:calc(100vh - 200px);min-height:300px;overflow-y:auto;font-size:11px;line-height:1.8}
+.log-box::-webkit-scrollbar{width:3px}.log-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ll{white-space:pre-wrap;word-break:break-all}
+.ll.info{color:var(--text2)}.ll.warn{color:var(--yellow)}.ll.error{color:var(--red)}.ll.debug{color:var(--text3)}
 
-/* ── Mobile drawer overlay ── */
-.drawer-overlay {
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
-  z-index:99; opacity:0; transition:opacity .25s;
-}
-.drawer-overlay.open { opacity:1; }
+/* Spinner */
+.spin{width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;display:none}
+.spin.on{display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
 
-/* ── Page ── */
-.page { display:none; padding:24px; animation:fadeIn .2s ease; }
-.page.active { display:block; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+/* Modal */
+.modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:18px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}
+.fg input.err,.fg select.err{border-color:var(--red)}
+.fg .hint{font-size:10px;color:var(--text3);margin-top:3px}
+.fg .verr{font-size:10px;color:var(--red);margin-top:3px;display:none}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
 
-/* ── Status bar ── */
-.status-bar {
-  display:flex; flex-wrap:wrap; gap:6px;
-  margin-bottom:24px;
-}
-.stat-chip {
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:6px 14px;
-  display:flex; align-items:center; gap:6px;
-  font-size:11px;
-}
-.stat-chip .lbl { color:var(--text2); }
-.stat-chip .val { color:var(--text); font-weight:500; }
-.stat-chip.highlight .val { color:var(--accent); }
+/* Confirm modal */
+.confirm-modal .modal{max-width:380px;text-align:center}
+.confirm-modal .modal p{color:var(--text2);font-size:12px;margin-bottom:20px;line-height:1.6}
 
-/* ── Section header ── */
-.section-hdr {
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:16px;
-}
-.section-title {
-  font-family:'Syne',sans-serif;
-  font-size:11px; font-weight:700;
-  letter-spacing:2px; text-transform:uppercase;
-  color:var(--text2);
-}
+/* Settings sections */
+.settings-section{margin-bottom:24px}
+.settings-section .section-title{margin-bottom:14px}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-/* ── Buttons ── */
-.btn {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:7px 14px; border-radius:6px;
-  font-family:'JetBrains Mono',monospace; font-size:11px;
-  cursor:pointer; border:1px solid var(--border);
-  background:var(--surface2); color:var(--text2);
-  transition:all .15s; white-space:nowrap;
-}
-.btn:hover { border-color:var(--accent); color:var(--accent); }
-.btn:active { transform:scale(.97); }
-.btn-primary { background:var(--accent-glow); border-color:var(--accent); color:var(--accent); font-weight:500; }
-.btn-group { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+/* Test result inline */
+.test-result{font-size:11px;margin-top:8px;padding:6px 10px;border-radius:5px;display:none}
+.test-result.ok{background:rgba(16,185,129,.1);color:var(--green);display:block}
+.test-result.fail{background:rgba(244,63,94,.1);color:var(--red);display:block}
 
-/* ── Agent cards ── */
-.agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:28px; }
-
-.agent-card {
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:12px; padding:20px;
-  transition:border-color .2s, box-shadow .2s;
-  animation:slideUp .35s ease both;
-  position:relative; overflow:hidden;
-}
-.agent-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-  background:linear-gradient(90deg, var(--accent2), var(--accent));
-  opacity:0; transition:opacity .2s;
-}
-.agent-card:hover { border-color:var(--border2); box-shadow:var(--shadow); }
-.agent-card:hover::before { opacity:1; }
-@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-
-.card-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
-.card-name { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; color:var(--text); }
-.card-sub  { font-size:11px; color:var(--text2); margin-top:3px; }
-.card-ping { font-size:11px; margin-top:4px; }
-
-.conn-indicator {
-  width:10px; height:10px; border-radius:50%;
-  background:var(--text3); flex-shrink:0; margin-top:3px;
-  transition:background .3s, box-shadow .3s;
-}
-.conn-indicator.ok   { background:var(--green); box-shadow:0 0 8px var(--green); }
-.conn-indicator.fail { background:var(--red); }
-
-.prog-track { background:var(--border); border-radius:4px; height:5px; margin-bottom:16px; overflow:hidden; }
-.prog-fill  { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .8s cubic-bezier(.4,0,.2,1); }
-
-.card-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-.cs { text-align:center; }
-.cs-val   { font-size:16px; font-weight:700; color:var(--accent); line-height:1.2; }
-.cs-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-top:2px; }
-.cs.ok  .cs-val { color:var(--green); }
-.cs.bad .cs-val { color:var(--red); }
-
-/* ── Panel ── */
-.panel {
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:12px; padding:20px; margin-bottom:20px;
-}
-
-/* ── Table ── */
-.tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.tbl { width:100%; border-collapse:collapse; min-width:500px; }
-.tbl th {
-  text-align:left; color:var(--text2);
-  font-size:10px; text-transform:uppercase; letter-spacing:1px;
-  padding:0 0 10px; border-bottom:1px solid var(--border);
-  white-space:nowrap; font-weight:400;
-}
-.tbl td { padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; vertical-align:middle; }
-.tbl tr:last-child td { border-bottom:none; }
-.tbl td:not(:last-child) { padding-right:16px; }
-
-.up  { color:var(--green); }
-.dn  { color:var(--red); }
-.rx  { color:var(--accent); font-weight:600; }
-.tx  { color:var(--accent2); font-weight:600; }
-.dim { color:var(--text2); font-size:11px; }
-
-/* ── Quota bar ── */
-.quota-track { background:var(--border); border-radius:3px; height:6px; min-width:80px; overflow:hidden; margin-bottom:3px; }
-.quota-fill  { height:100%; border-radius:3px; transition:width .6s ease; }
-.q-ok   { background:var(--green); }
-.q-warn { background:var(--yellow); }
-.q-crit { background:var(--red); }
-
-/* ── Pills ── */
-.pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-.p-pending { background:rgba(74,90,112,.15); color:var(--text2); }
-.p-running { background:rgba(245,158,11,.12); color:var(--yellow); animation:blink 1.4s infinite; }
-.p-done    { background:rgba(16,185,129,.12); color:var(--green); }
-.p-failed  { background:rgba(244,63,94,.12); color:var(--red); }
-@keyframes blink { 50%{opacity:.5} }
-
-.badge { display:inline-block; padding:1px 7px; background:rgba(139,92,246,.15); color:var(--accent2); border-radius:4px; font-size:9px; margin-left:4px; }
-
-/* ── Log ── */
-.log-box {
-  background:var(--bg); border:1px solid var(--border);
-  border-radius:10px; padding:16px;
-  height:320px; overflow-y:auto;
-  font-size:11px; line-height:1.8;
-}
-.log-box::-webkit-scrollbar { width:3px; }
-.log-box::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-.ll { white-space:pre-wrap; word-break:break-all; }
-.ll.info  { color:var(--text2); }
-.ll.warn  { color:var(--yellow); }
-.ll.error { color:var(--red); }
-.ll.debug { color:var(--text3); }
-
-/* ── Spinner ── */
-.spin { width:13px; height:13px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:rot .7s linear infinite; display:none; }
-.spin.on { display:inline-block; }
-@keyframes rot { to{transform:rotate(360deg)} }
-
-/* ── Clock (sidebar) ── */
-.sidebar-clock { font-size:10px; color:var(--text3); letter-spacing:.5px; margin-bottom:8px; display:block; }
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .sidebar { transform:translateX(-100%); }
-  .sidebar.open { transform:translateX(0); box-shadow:4px 0 24px rgba(0,0,0,.4); }
-  .topbar { display:flex; }
-  .main { margin-left:0; }
-  .page { padding:16px; }
-  .agents-grid { grid-template-columns:1fr; }
-  .card-stats { grid-template-columns:repeat(4,1fr); }
-  .status-bar { gap:4px; }
-  .stat-chip { padding:4px 10px; }
-}
-
-@media (min-width:769px) and (max-width:1100px) {
-  .agents-grid { grid-template-columns:repeat(2,1fr); }
-}
-
-/* ── Empty ── */
-.empty { color:var(--text3); font-size:12px; padding:12px 0; }
-
-/* ── Scroll indicator ── */
-.tbl-wrap::after {
-  content:''; display:block;
-  position:sticky; bottom:0;
-  height:1px;
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,.4)}
+  .topbar{display:flex}.main{margin-left:0!important}
+  .page{padding:14px}.agents-grid{grid-template-columns:1fr}
+  .settings-grid,.fg-row{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- Sidebar -->
-  <nav class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <span class="logo-mark">NetPulse</span>
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div>
+      <span class="logo-mark">NP<span class="logo-word">ulse</span></span>
       <span class="logo-sub">coordinator</span>
     </div>
-
-    <div class="nav">
-      <div class="nav-item active" onclick="navTo('overview',this)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
-          <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
-        </svg>
-        Overview
-      </div>
-      <div class="nav-item" onclick="navTo('plan',this)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="1" y="1" width="14" height="14" rx="2"/>
-          <line x1="4" y1="5" x2="12" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/>
-        </svg>
-        Today's Plan
-      </div>
-      <div class="nav-item" onclick="navTo('quota',this)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="8" cy="8" r="6.5"/>
-          <path d="M8 8 L8 3 A5 5 0 0 1 13 8 Z" fill="currentColor" opacity=".3"/>
-        </svg>
-        Quota / Metrics
-      </div>
-      <div class="nav-item" onclick="navTo('history',this)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <polyline points="1,12 5,6 8,9 11,4 15,8"/>
-        </svg>
-        Monthly History
-      </div>
-      <div class="nav-item" onclick="navTo('logs',this)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="2" y="1" width="12" height="14" rx="1.5"/>
-          <line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/>
-        </svg>
-        Logs
-      </div>
-    </div>
-
-    <div class="sidebar-footer">
-      <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
-        <svg id="themeIcon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="8" cy="8" r="3.5"/>
-          <line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/>
-          <line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/>
-          <line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/>
-          <line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/>
-        </svg>
-      </button>
-      <a href="/logout" class="logout-link">logout</a>
-    </div>
-  </nav>
-
-  <!-- Mobile topbar -->
-  <div class="topbar">
-    <button class="hamburger" onclick="toggleDrawer()">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
-      </svg>
-    </button>
-    <span class="topbar-logo">NetPulse</span>
-    <span class="topbar-clock" id="topbarClock"></span>
-    <button class="theme-btn" onclick="toggleTheme()">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="8" cy="8" r="3.5"/>
-        <line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/>
-        <line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/>
-      </svg>
+    <button class="collapse-btn" onclick="toggleCollapse()">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 4,6 8,10"/></svg>
     </button>
   </div>
-
-  <!-- Drawer overlay -->
-  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
-
-  <!-- Main -->
-  <main class="main">
-
-    <!-- Overview -->
-    <div id="page-overview" class="page active">
-      <div class="status-bar" id="statusBar">
-        <div class="stat-chip"><span class="lbl">Date</span><span class="val" id="sDate">—</span></div>
-        <div class="stat-chip"><span class="lbl">Started</span><span class="val" id="sStarted">—</span></div>
-        <div class="stat-chip highlight"><span class="lbl">Downloaded</span><span class="val" id="sTotalDL">—</span></div>
-        <div class="stat-chip"><span class="lbl">Agents</span><span class="val" id="sAgents">—</span></div>
-        <div class="stat-chip"><span class="lbl">Plan</span><span class="val" id="sPlanCount">—</span></div>
-      </div>
-
-      <div class="section-hdr">
-        <span class="section-title">Agents</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary" onclick="pingAgents()">
-            <span id="pingSpinner" class="spin"></span>⚡ Test Connections
-          </button>
-          <button class="btn" onclick="refreshAll()">↻ Refresh</button>
-        </div>
-      </div>
-      <div class="agents-grid" id="agentsGrid"><div class="empty">Loading…</div></div>
+  <div class="nav">
+    <div class="nav-item active" onclick="navTo('overview',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      <span class="nav-label">Overview</span>
     </div>
+    <div class="nav-item" onclick="navTo('plan',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="4" y1="5" x2="12" y2="5"/><line x1="4" y1="8" x2="10" y2="8"/><line x1="4" y1="11" x2="8" y2="11"/></svg>
+      <span class="nav-label">Today's Plan</span>
+    </div>
+    <div class="nav-item" onclick="navTo('manual',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,8 7,12 13,4"/></svg>
+      <span class="nav-label">Manual Jobs</span>
+    </div>
+    <div class="nav-item" onclick="navTo('quota',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 8 L8 3 A5 5 0 0 1 13 8 Z" fill="currentColor" opacity=".3"/></svg>
+      <span class="nav-label">Quota / Metrics</span>
+    </div>
+    <div class="nav-item" onclick="navTo('history',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,12 5,6 8,9 11,4 15,8"/></svg>
+      <span class="nav-label">Monthly History</span>
+    </div>
+    <div class="nav-item" onclick="navTo('settings',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4"/></svg>
+      <span class="nav-label">Settings</span>
+    </div>
+    <div class="nav-item" onclick="navTo('logs',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="5" y1="11" x2="8" y2="11"/></svg>
+      <span class="nav-label">Logs</span>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <button class="theme-btn" onclick="toggleTheme()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3.5"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg>
+    </button>
+    <a href="/logout" class="logout-link sf-text">logout</a>
+  </div>
+</nav>
 
-    <!-- Plan -->
-    <div id="page-plan" class="page">
-      <div class="btn-group">
-        <button class="btn" onclick="loadPlan()">↻ Refresh Plan</button>
-      </div>
-      <div class="panel">
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>#</th><th>Agent</th><th>Source</th><th>Scheduled At</th><th>Status</th><th>Downloaded</th><th>Error</th></tr></thead>
-            <tbody id="planBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
+<!-- Mobile topbar -->
+<div class="topbar">
+  <button class="hamburger" onclick="toggleDrawer()">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
+  </button>
+  <span class="topbar-logo">NetPulse</span>
+  <button class="theme-btn" onclick="toggleTheme()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3.5"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/></svg>
+  </button>
+</div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+
+<main class="main">
+<!-- Refresh bar -->
+<div class="refresh-bar">
+  <span class="ri"></span>
+  <span style="color:var(--text3)">Auto-refresh:</span>
+  <select id="refreshSelect" onchange="setRefreshInterval(+this.value)">
+    <option value="5">5s</option><option value="10" selected>10s</option>
+    <option value="30">30s</option><option value="60">60s</option><option value="0">Off</option>
+  </select>
+  <span id="clock" style="margin-left:auto;color:var(--text3)"></span>
+</div>
+
+<!-- ── Overview ── -->
+<div id="page-overview" class="page active">
+  <div class="status-bar">
+    <div class="stat-chip"><span class="lbl">Date</span><span class="val" id="sDate">—</span></div>
+    <div class="stat-chip"><span class="lbl">Started</span><span class="val" id="sStarted">—</span></div>
+    <div class="stat-chip hi"><span class="lbl">Downloaded</span><span class="val" id="sTotalDL">—</span></div>
+    <div class="stat-chip"><span class="lbl">Agents</span><span class="val" id="sAgents">—</span></div>
+    <div class="stat-chip"><span class="lbl">Plan</span><span class="val" id="sPlanCount">—</span></div>
+  </div>
+  <div class="section-hdr">
+    <span class="section-title">Agents</span>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="pingAllAgents()"><span id="pingSpinner" class="spin"></span>⚡ Test All</button>
+      <button class="btn" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="agents-grid" id="agentsGrid"><div class="empty">Loading…</div></div>
+</div>
+
+<!-- ── Plan ── -->
+<div id="page-plan" class="page">
+  <div class="toolbar">
+    <button class="btn" onclick="loadPlan()">↻ Refresh</button>
+    <button class="btn btn-danger" onclick="confirmAction('Reset all pending events for today?', resetPlan)">⚠ Reset Plan</button>
+  </div>
+  <div class="panel">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Agent</th><th>Source</th><th>Scheduled At</th><th>Status</th><th>Downloaded</th><th>Error</th><th></th></tr></thead>
+        <tbody id="planBody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Manual Jobs ── -->
+<div id="page-manual" class="page">
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="openManualModal()">+ New Job</button>
+    <button class="btn" onclick="loadManualJobs()">↻ Refresh</button>
+  </div>
+  <div class="panel">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Agent</th><th>Source</th><th>Count</th><th>Mode</th><th>Interval</th><th>Status</th><th>Done</th><th>Downloaded</th><th>Start At</th><th>Error</th></tr></thead>
+        <tbody id="manualBody"><tr><td colspan="11" class="empty">No manual jobs yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quota / Metrics ── -->
+<div id="page-quota" class="page">
+  <div class="toolbar">
+    <button class="btn" onclick="refreshQuotaPage()">↻ Refresh</button>
+    <span id="metricSpinner" class="spin" style="align-self:center"></span>
+  </div>
+  <div class="section-title" style="margin-bottom:12px">Agent Monthly Quota</div>
+  <div id="quotaCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:24px"><div class="empty">Loading…</div></div>
+  <div class="section-title" style="margin-bottom:12px">VPN Server Metrics</div>
+  <div class="panel">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th></tr></thead>
+        <tbody id="metricsBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── History ── -->
+<div id="page-history" class="page">
+  <div class="toolbar"><button class="btn" onclick="loadHistory()">↻ Refresh</button></div>
+  <div class="panel">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Month</th><th>Agent</th><th>Downloaded (GB)</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings ── -->
+<div id="page-settings" class="page">
+  <!-- Agents -->
+  <div class="settings-section">
+    <div class="section-hdr">
+      <span class="section-title">Agents</span>
+      <button class="btn btn-primary btn-sm" onclick="openAgentModal()">+ Add Agent</button>
+    </div>
+    <div class="panel">
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Label</th><th>Host</th><th>Port</th><th>User</th><th>Daily GB</th><th>Monthly GB</th><th>Quota %</th><th>Enabled</th><th></th></tr></thead>
+          <tbody id="agentsTable"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- Quota -->
-    <div id="page-quota" class="page">
-      <div class="btn-group">
-        <button class="btn" onclick="refreshQuotaPage()">↻ Refresh</button>
-        <span id="metricSpinner" class="spin" style="align-self:center"></span>
-      </div>
-      <div class="section-hdr" style="margin-bottom:14px">
-        <span class="section-title">Agent Monthly Quota</span>
-      </div>
-      <div id="quotaCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px">
-        <div class="empty">Loading…</div>
-      </div>
-      <div class="section-hdr" style="margin-bottom:14px">
-        <span class="section-title">VPN Server Metrics</span>
-      </div>
-      <div class="panel">
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>Server</th><th>Type</th><th>Status</th><th>RX GB</th><th>TX GB</th></tr></thead>
-            <tbody id="metricsBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
+  <!-- Sources -->
+  <div class="settings-section">
+    <div class="section-hdr">
+      <span class="section-title">Download Sources</span>
+      <button class="btn btn-primary btn-sm" onclick="openSourceModal()">+ Add Source</button>
+    </div>
+    <div class="panel">
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Label</th><th>Download URL</th><th>Metric URL</th><th>Enabled</th><th></th></tr></thead>
+          <tbody id="sourcesTable"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- History -->
-    <div id="page-history" class="page">
-      <div class="btn-group">
-        <button class="btn" onclick="loadHistory()">↻ Refresh History</button>
-      </div>
-      <div class="panel">
-        <div class="tbl-wrap">
-          <table class="tbl">
-            <thead><tr><th>Month</th><th>Agent</th><th>Downloaded (GB)</th></tr></thead>
-            <tbody id="historyBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
+  <!-- Monitors -->
+  <div class="settings-section">
+    <div class="section-hdr">
+      <span class="section-title">Monitors</span>
+      <button class="btn btn-primary btn-sm" onclick="openMonitorModal()">+ Add Monitor</button>
+    </div>
+    <div class="panel">
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Label</th><th>Metric URL</th><th>Enabled</th><th></th></tr></thead>
+          <tbody id="monitorsTable"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- Logs -->
-    <div id="page-logs" class="page">
-      <div class="btn-group">
-        <button class="btn" onclick="refreshLogs()">↻ Refresh</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer;align-self:center">
-          <input type="checkbox" id="autoScrollChk" checked> auto-scroll
-        </label>
+  <!-- Scheduler settings -->
+  <div class="settings-section">
+    <div class="section-title" style="margin-bottom:14px">Scheduler</div>
+    <div class="panel">
+      <div class="settings-grid">
+        <div class="fg"><label>Days to run (0=forever)</label><input id="s_scheduler_days" type="number" min="0"></div>
+        <div class="fg"><label>Daily variance (0.0–1.0)</label><input id="s_scheduler_daily_variance" type="number" step="0.01" min="0" max="1"></div>
+        <div class="fg"><label>Schedule weights (4 values, comma-sep)</label><input id="s_scheduler_schedule_weights"><div class="hint">e.g. 0.05,0.30,0.35,0.30</div></div>
+        <div class="fg"><label>Recreate plan each cycle</label><select id="s_scheduler_recreate_plan"><option value="true">Yes</option><option value="false">No</option></select></div>
       </div>
-      <div class="log-box" id="logBox"></div>
     </div>
+  </div>
 
-  </main>
+  <!-- Download settings -->
+  <div class="settings-section">
+    <div class="section-title" style="margin-bottom:14px">Download</div>
+    <div class="panel">
+      <div class="settings-grid">
+        <div class="fg"><label>Speed cap (bytes/sec, 0=unlimited)</label><input id="s_download_speed_cap" type="number" min="0"></div>
+        <div class="fg"><label>Pause probability (0.0–1.0)</label><input id="s_download_pause_probability" type="number" step="0.05" min="0" max="1"></div>
+        <div class="fg"><label>Pause range (min,max seconds)</label><input id="s_download_pause_range"><div class="hint">e.g. 10,90</div></div>
+        <div class="fg"><label>Max concurrent downloads</label><input id="s_download_max_concurrent" type="number" min="1"></div>
+        <div class="fg"><label>Max retries</label><input id="s_download_max_retries" type="number" min="1"></div>
+        <div class="fg"><label>Retry delay range (min,max seconds)</label><input id="s_download_retry_delay_range"><div class="hint">e.g. 30,120</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Network settings -->
+  <div class="settings-section">
+    <div class="section-title" style="margin-bottom:14px">Network</div>
+    <div class="panel">
+      <div class="settings-grid">
+        <div class="fg"><label>Verify SSL</label><select id="s_network_verify_ssl"><option value="false">No (self-signed OK)</option><option value="true">Yes</option></select></div>
+        <div class="fg"><label>Connection test URL</label><input id="s_network_connection_test_url"><div class="hint">Must start with https://</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI settings -->
+  <div class="settings-section">
+    <div class="section-title" style="margin-bottom:14px">UI</div>
+    <div class="panel">
+      <div class="settings-grid">
+        <div class="fg"><label>Auto-refresh interval (seconds)</label><input id="s_ui_auto_refresh_seconds" type="number" min="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-top:4px">
+    <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    <button class="btn" onclick="loadSettings()">↻ Reload</button>
+  </div>
+</div>
+
+<!-- ── Logs ── -->
+<div id="page-logs" class="page">
+  <div class="toolbar">
+    <button class="btn" onclick="refreshLogs()">↻ Refresh</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer;align-self:center">
+      <input type="checkbox" id="autoScrollChk" checked> auto-scroll
+    </label>
+  </div>
+  <div class="log-box" id="logBox"></div>
+</div>
+</main>
+
+<!-- ── Agent Modal ── -->
+<div id="agentModal" style="display:none" class="modal-bd">
+<div class="modal">
+  <h3 id="agentModalTitle">Add Agent</h3>
+  <input type="hidden" id="aOrigLabel">
+  <div class="fg-row">
+    <div class="fg"><label>Label *</label><input id="aLabel" placeholder="my-server"><div class="verr" id="aLabelErr"></div></div>
+    <div class="fg"><label>Host *</label><input id="aHost" placeholder="192.168.1.10"><div class="verr" id="aHostErr"></div></div>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><label>SSH Port</label><input id="aPort" type="number" value="22"></div>
+    <div class="fg"><label>Username *</label><input id="aUser" placeholder="root"><div class="verr" id="aUserErr"></div></div>
+  </div>
+  <div class="fg"><label>Password *</label><input id="aPass" type="password"><div class="verr" id="aPassErr"></div></div>
+  <div class="fg-row">
+    <div class="fg"><label>Daily Limit (GB)</label><input id="aDailyGb" type="number" step="0.5" value="1"></div>
+    <div class="fg"><label>Monthly Limit (GB, 0=∞)</label><input id="aMonthlyGb" type="number" step="10" value="0"></div>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><label>Usage Quota % (0.0–1.0)</label><input id="aQuotaPct" type="number" step="0.05" value="1.0"></div>
+    <div class="fg"><label>Enabled</label><select id="aEnabled"><option value="1">Yes</option><option value="0">No</option></select></div>
+  </div>
+  <div id="aStartNowWrap" style="display:none" class="fg">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="aStartNow"> Start downloading immediately
+    </label>
+  </div>
+  <!-- Inline connection test -->
+  <div class="fg">
+    <button class="btn btn-sm" id="aTestBtn" onclick="testAgentInModal()" style="display:none">⚡ Test Connection</button>
+    <div class="test-result" id="aTestResult"></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn" onclick="closeModal('agentModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveAgent()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- ── Source Modal ── -->
+<div id="sourceModal" style="display:none" class="modal-bd">
+<div class="modal">
+  <h3 id="sourceModalTitle">Add Source</h3>
+  <input type="hidden" id="sOrigLabel">
+  <div class="fg"><label>Label *</label><input id="sLabel" placeholder="server1"><div class="verr" id="sLabelErr"></div></div>
+  <div class="fg"><label>Download URL *</label><input id="sDownloadUrl" placeholder="https://..."><div class="verr" id="sDownloadUrlErr"></div></div>
+  <div class="fg"><label>Metric URL</label><input id="sMetricUrl" placeholder="https://... (optional)"><div class="verr" id="sMetricUrlErr"></div></div>
+  <div class="fg"><label>Enabled</label><select id="sEnabled"><option value="1">Yes</option><option value="0">No</option></select></div>
+  <div class="form-actions">
+    <button class="btn" onclick="closeModal('sourceModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveSource()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- ── Monitor Modal ── -->
+<div id="monitorModal" style="display:none" class="modal-bd">
+<div class="modal">
+  <h3 id="monitorModalTitle">Add Monitor</h3>
+  <input type="hidden" id="mOrigLabel">
+  <div class="fg"><label>Label *</label><input id="mLabel" placeholder="monitor1"><div class="verr" id="mLabelErr"></div></div>
+  <div class="fg"><label>Metric URL *</label><input id="mMetricUrl" placeholder="https://..."><div class="verr" id="mMetricUrlErr"></div></div>
+  <div class="fg"><label>Enabled</label><select id="mEnabled"><option value="1">Yes</option><option value="0">No</option></select></div>
+  <div class="form-actions">
+    <button class="btn" onclick="closeModal('monitorModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveMonitor()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- ── Manual Job Modal ── -->
+<div id="manualModal" style="display:none" class="modal-bd">
+<div class="modal">
+  <h3>New Manual Job</h3>
+  <div class="fg-row">
+    <div class="fg"><label>Agent *</label><select id="mjAgent"></select></div>
+    <div class="fg"><label>Source *</label><select id="mjSource"></select></div>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><label>Download Count</label><input id="mjCount" type="number" min="1" value="1"><div class="hint">How many times to download</div></div>
+    <div class="fg"><label>Mode</label>
+      <select id="mjMode">
+        <option value="immediate">Immediate</option>
+        <option value="scheduled">Scheduled (next cycle)</option>
+      </select>
+    </div>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><label>Interval Type</label>
+      <select id="mjIntervalType">
+        <option value="fixed">Fixed</option>
+        <option value="random">Random (±50%)</option>
+      </select>
+    </div>
+    <div class="fg"><label>Interval (seconds)</label><input id="mjIntervalSecs" type="number" min="1" value="60"><div class="hint">Wait between downloads</div></div>
+  </div>
+  <div class="fg"><label>Start At (optional)</label><input id="mjStartAt" type="datetime-local"><div class="hint">Leave empty to start immediately</div></div>
+  <div class="form-actions">
+    <button class="btn" onclick="closeModal('manualModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="submitManualJob()">Start</button>
+  </div>
+</div>
+</div>
+
+<!-- ── Confirm Modal ── -->
+<div id="confirmModal" style="display:none" class="modal-bd confirm-modal">
+<div class="modal">
+  <h3>Confirm</h3>
+  <p id="confirmMsg"></p>
+  <div class="form-actions">
+    <button class="btn" onclick="closeModal('confirmModal')">Cancel</button>
+    <button class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+  </div>
+</div>
 </div>
 
 <script>
+// ── Core helpers ───────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const fmtBytes = b => !b?'0 B':b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';
 const fmtTime  = s => s?s.replace('T',' ').slice(0,19):'—';
 
-// ── Clock ──────────────────────────────────────────────────────────────────
-function tick() {
-  const t = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';
-  const tc = $('topbarClock'); if(tc) tc.textContent = t;
+async function api(url, opts={}) {
+  const r = await fetch(url, opts);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d;
 }
-setInterval(tick,1000); tick();
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+setInterval(()=>{ $('clock').textContent = new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; }, 1000);
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 function toggleTheme() {
-  const html = document.documentElement;
-  const next = html.dataset.theme==='dark' ? 'light' : 'dark';
-  html.dataset.theme = next;
-  localStorage.setItem('np-theme', next);
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('np-theme', t);
 }
-const saved = localStorage.getItem('np-theme');
-if (saved) document.documentElement.dataset.theme = saved;
+const _savedTheme = localStorage.getItem('np-theme');
+if (_savedTheme) document.documentElement.dataset.theme = _savedTheme;
 
-// ── Nav ────────────────────────────────────────────────────────────────────
-let currentPage = 'overview';
-function navTo(name, el) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  $('page-'+name).classList.add('active');
-  el.classList.add('active');
-  currentPage = name;
-  closeSidebar();
-  if(name==='plan')    loadPlan();
-  if(name==='quota')   refreshQuotaPage();
-  if(name==='history') loadHistory();
-  if(name==='logs')    refreshLogs();
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function toggleCollapse() {
+  $('sidebar').classList.toggle('collapsed');
+  localStorage.setItem('np-collapsed', $('sidebar').classList.contains('collapsed') ? '1' : '0');
 }
+if (localStorage.getItem('np-collapsed') === '1') $('sidebar').classList.add('collapsed');
 
-// ── Mobile sidebar ─────────────────────────────────────────────────────────
 function toggleDrawer() {
   const sb = $('sidebar'), ov = $('drawerOverlay');
   const open = sb.classList.toggle('open');
   ov.style.display = open ? 'block' : 'none';
-  requestAnimationFrame(()=>{ ov.classList.toggle('open', open); });
+  requestAnimationFrame(() => ov.classList.toggle('open', open));
 }
 function closeSidebar() {
   $('sidebar').classList.remove('open');
   const ov = $('drawerOverlay');
   ov.classList.remove('open');
-  setTimeout(()=>{ ov.style.display='none'; }, 250);
+  setTimeout(() => ov.style.display = 'none', 250);
+}
+
+// ── Nav ────────────────────────────────────────────────────────────────────
+let currentPage = 'overview';
+function navTo(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $('page-' + name).classList.add('active');
+  el.classList.add('active');
+  currentPage = name;
+  closeSidebar();
+  ({ plan: loadPlan, manual: loadManualJobs, quota: refreshQuotaPage,
+     history: loadHistory, settings: loadSettingsPage, logs: refreshLogs }[name] || loadState)();
+}
+
+// ── Auto-refresh ───────────────────────────────────────────────────────────
+let _timer = null;
+function setRefreshInterval(secs) {
+  clearInterval(_timer);
+  if (secs > 0) _timer = setInterval(refreshCurrent, secs * 1000);
+}
+function refreshCurrent() {
+  ({ overview: refreshAll, plan: loadPlan, manual: loadManualJobs, quota: refreshQuotaPage,
+     history: loadHistory, settings: loadSettingsPage, logs: refreshLogs }[currentPage] || refreshAll)();
+}
+setRefreshInterval(10);
+
+// ── Confirm modal (replaces browser confirm()) ─────────────────────────────
+function confirmAction(msg, onOk) {
+  $('confirmMsg').textContent = msg;
+  $('confirmModal').style.display = 'flex';
+  $('confirmOkBtn').onclick = () => { closeModal('confirmModal'); onOk(); };
+}
+
+// ── Modal helpers ──────────────────────────────────────────────────────────
+function closeModal(id) { $(id).style.display = 'none'; }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')
+    document.querySelectorAll('.modal-bd').forEach(m => m.style.display = 'none');
+});
+
+// ── Validation helpers ─────────────────────────────────────────────────────
+function showErr(id, msg) {
+  const el = $(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+  const input = el.previousElementSibling;
+  if (input) input.classList.toggle('err', !!msg);
+}
+function clearErrs(...ids) { ids.forEach(id => showErr(id, '')); }
+
+function validateLabel(v, errId) {
+  if (!v.trim()) { showErr(errId, 'Required'); return false; }
+  if (!/^[\w\-. ]{1,64}$/.test(v)) { showErr(errId, 'Letters, numbers, hyphens, dots, spaces (max 64)'); return false; }
+  showErr(errId, ''); return true;
+}
+function validateUrl(v, errId, required = true) {
+  if (!v.trim() && !required) { showErr(errId, ''); return true; }
+  if (!v.trim()) { showErr(errId, 'Required'); return false; }
+  if (!/^https?:\/\/.{3,}/.test(v)) { showErr(errId, 'Must start with http:// or https://'); return false; }
+  showErr(errId, ''); return true;
+}
+function validateRequired(v, errId) {
+  if (!v.trim()) { showErr(errId, 'Required'); return false; }
+  showErr(errId, ''); return true;
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
 let pingResults = {};
 
 async function loadState() {
-  const d = await fetch('/api/state').then(r=>r.json()).catch(()=>({}));
-  $('sDate').textContent     = d.date||'—';
+  const d = await api('/api/state').catch(() => ({}));
+  $('sDate').textContent     = d.date || '—';
   $('sStarted').textContent  = fmtTime(d.started_at);
-  $('sAgents').textContent   = Object.keys(d.agents||{}).length;
-  $('sPlanCount').textContent= (d.plan||[]).length;
-  let total=0; Object.values(d.agents||{}).forEach(a=>total+=a.downloaded_bytes);
+  $('sAgents').textContent   = Object.keys(d.agents || {}).length;
+  $('sPlanCount').textContent = (d.plan || []).length;
+  let total = 0;
+  Object.values(d.agents || {}).forEach(a => total += a.downloaded_bytes);
   $('sTotalDL').textContent = fmtBytes(total);
-  renderAgents(d.agents||{}, d.plan||[]);
+  renderAgents(d.agents || {}, d.plan || []);
 }
 
 function renderAgents(agents, plan) {
   const grid = $('agentsGrid');
-  if(!Object.keys(agents).length){ grid.innerHTML='<div class="empty">No agents configured.</div>'; return; }
-  grid.innerHTML = Object.values(agents).map((a,i)=>{
-    const pct = a.daily_limit_gb>0 ? Math.min(100,a.downloaded_bytes/(a.daily_limit_gb*1024**3)*100) : 0;
+  if (!Object.keys(agents).length) {
+    grid.innerHTML = '<div class="empty">No agents configured. Go to Settings → Agents to add one.</div>';
+    return;
+  }
+  grid.innerHTML = Object.values(agents).map((a, i) => {
+    const pct  = a.daily_limit_gb > 0 ? Math.min(100, a.downloaded_bytes / (a.daily_limit_gb * 1024 ** 3) * 100) : 0;
     const ping = pingResults[a.label];
-    const dotCls = ping?(ping.ok?'ok':'fail'):'';
-    const ap = plan.filter(e=>e.agent_label===a.label);
-    const done = ap.filter(e=>e.status==='done').length;
-    const running = ap.filter(e=>e.status==='running').length;
-    return `<div class="agent-card" style="animation-delay:${i*.07}s">
+    const dotCls = ping ? (ping.ok ? 'ok' : 'fail') : '';
+    const ap   = plan.filter(e => e.agent_label === a.label);
+    const done = ap.filter(e => e.status === 'done').length;
+    const live = ap.filter(e => e.status === 'running').length;
+    const label = a.label.replace(/'/g, "\\'");
+    return `<div class="agent-card" style="animation-delay:${i * .07}s">
       <div class="card-head">
         <div>
           <div class="card-name">${a.label}</div>
           <div class="card-sub">${a.daily_limit_gb} GB / day</div>
-          ${ping?`<div class="card-ping" style="color:${ping.ok?'var(--green)':'var(--red)'}">${ping.message}</div>`:''}
+          ${ping ? `<div class="card-sub" style="margin-top:3px;color:${ping.ok ? 'var(--green)' : 'var(--red)'}">${ping.message}</div>` : ''}
         </div>
-        <div class="conn-indicator ${dotCls}"></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="conn-dot ${dotCls}"></div>
+          <button class="btn btn-sm btn-icon" onclick="pingOneAgent('${label}')" title="Test connection">⚡</button>
+        </div>
       </div>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
       <div class="card-stats">
         <div class="cs"><div class="cs-val">${fmtBytes(a.downloaded_bytes)}</div><div class="cs-label">DL'd</div></div>
         <div class="cs ok"><div class="cs-val">${a.downloads_ok}</div><div class="cs-label">OK</div></div>
         <div class="cs bad"><div class="cs-val">${a.downloads_fail}</div><div class="cs-label">Failed</div></div>
-        <div class="cs"><div class="cs-val">${ap.length?`${done}/${ap.length}`:'—'}</div><div class="cs-label">${running?`▶ ${running} live`:'Plan'}</div></div>
+        <div class="cs"><div class="cs-val">${ap.length ? `${done}/${ap.length}` : '—'}</div><div class="cs-label">${live ? `▶ ${live}` : 'Plan'}</div></div>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── Ping ───────────────────────────────────────────────────────────────────
-async function pingAgents() {
+async function pingAllAgents() {
   $('pingSpinner').classList.add('on');
   try {
-    const r = await fetch('/api/ping-agents').then(r=>r.json());
-    r.forEach(x=>{ pingResults[x.label]={ok:x.ok,message:x.message}; });
+    const r = await api('/api/ping-agents');
+    r.forEach(x => { pingResults[x.label] = { ok: x.ok, message: x.message }; });
     await loadState();
   } finally { $('pingSpinner').classList.remove('on'); }
 }
 
+async function pingOneAgent(label) {
+  pingResults[label] = { ok: null, message: 'Testing…' };
+  renderAgentsFromCache();
+  const r = await api(`/api/agents/${encodeURIComponent(label)}/test`, { method: 'POST' }).catch(e => ({ ok: false, message: e.message }));
+  pingResults[label] = { ok: r.ok, message: r.message };
+  await loadState();
+}
+
+let _agentsCache = {}, _planCache = [];
+function renderAgentsFromCache() { renderAgents(_agentsCache, _planCache); }
+
+async function refreshAll() {
+  const d = await api('/api/state').catch(() => ({}));
+  _agentsCache = d.agents || {};
+  _planCache   = d.plan   || [];
+  $('sDate').textContent     = d.date || '—';
+  $('sStarted').textContent  = fmtTime(d.started_at);
+  $('sAgents').textContent   = Object.keys(_agentsCache).length;
+  $('sPlanCount').textContent = _planCache.length;
+  let total = 0;
+  Object.values(_agentsCache).forEach(a => total += a.downloaded_bytes);
+  $('sTotalDL').textContent = fmtBytes(total);
+  renderAgents(_agentsCache, _planCache);
+}
+
 // ── Plan ───────────────────────────────────────────────────────────────────
 async function loadPlan() {
-  const rows = await fetch('/api/plan').then(r=>r.json()).catch(()=>[]);
-  const tb = $('planBody');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="7" class="empty">No plan yet for today.</td></tr>'; return; }
-  const pc = {pending:'p-pending',running:'p-running',done:'p-done',failed:'p-failed'};
-  tb.innerHTML = rows.map((r,i)=>`<tr>
-    <td class="dim">${i+1}</td>
-    <td>${r.agent_label}</td>
-    <td>${r.source_label}</td>
+  const rows = await api('/api/plan').catch(() => []);
+  const tb   = $('planBody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No plan for today.</td></tr>'; return; }
+  const pc = { pending: 'p-pending', running: 'p-running', done: 'p-done', failed: 'p-failed' };
+  tb.innerHTML = rows.map((r, i) => `<tr>
+    <td class="dim">${i + 1}</td><td>${r.agent_label}</td><td>${r.source_label}</td>
     <td class="dim">${fmtTime(r.scheduled_at)}</td>
-    <td><span class="pill ${pc[r.status]||'p-pending'}">${r.status}</span></td>
-    <td>${r.bytes_downloaded>0?fmtBytes(r.bytes_downloaded):'—'}</td>
-    <td style="color:var(--red);font-size:11px">${r.error||''}</td>
+    <td><span class="pill ${pc[r.status] || 'p-pending'}">${r.status}</span></td>
+    <td>${r.bytes_downloaded > 0 ? fmtBytes(r.bytes_downloaded) : '—'}</td>
+    <td style="color:var(--red);font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis">${r.error || ''}</td>
+    <td>${r.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="confirmAction('Delete this event?',()=>deleteEvent(${r.id}))">✕</button>` : ''}</td>
   </tr>`).join('');
 }
 
-// ── Metrics (VPN servers — no quota) ──────────────────────────────────────
+async function deleteEvent(id) {
+  await api(`/api/plan/event/${id}`, { method: 'DELETE' });
+  loadPlan();
+}
+
+async function resetPlan() {
+  await api('/api/plan/reset', { method: 'DELETE' });
+  loadPlan();
+}
+
+// ── Manual Jobs ────────────────────────────────────────────────────────────
+async function loadManualJobs() {
+  const rows = await api('/api/manual-jobs').catch(() => []);
+  const tb   = $('manualBody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="11" class="empty">No manual jobs yet.</td></tr>'; return; }
+  const pc = { pending: 'p-pending', running: 'p-running', done: 'p-done', failed: 'p-failed' };
+  tb.innerHTML = rows.map((r, i) => `<tr>
+    <td class="dim">${i + 1}</td><td>${r.agent_label}</td><td>${r.source_label}</td>
+    <td>${r.download_count}</td>
+    <td><span class="pill p-imm">${r.mode}</span></td>
+    <td class="dim">${r.interval_type} / ${r.interval_seconds}s</td>
+    <td><span class="pill ${pc[r.status] || 'p-pending'}">${r.status}</span></td>
+    <td>${r.completed_count || 0}/${r.download_count}</td>
+    <td>${r.bytes_downloaded > 0 ? fmtBytes(r.bytes_downloaded) : '—'}</td>
+    <td class="dim">${fmtTime(r.start_at)}</td>
+    <td style="color:var(--red);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.error || ''}</td>
+  </tr>`).join('');
+}
+
+async function openManualModal() {
+  const [agents, sources] = await Promise.all([api('/api/agents'), api('/api/sources')]);
+  $('mjAgent').innerHTML  = agents.filter(a => a.enabled).map(a => `<option value="${a.label}">${a.label} (${a.host})</option>`).join('');
+  $('mjSource').innerHTML = sources.filter(s => s.enabled).map(s => `<option value="${s.label}">${s.label}</option>`).join('');
+  $('mjCount').value = 1; $('mjIntervalSecs').value = 60; $('mjStartAt').value = '';
+  $('manualModal').style.display = 'flex';
+}
+
+async function submitManualJob() {
+  const count = parseInt($('mjCount').value);
+  if (isNaN(count) || count < 1) { alert('Download count must be at least 1'); return; }
+  const secs  = parseInt($('mjIntervalSecs').value);
+  if (isNaN(secs) || secs < 1) { alert('Interval must be at least 1 second'); return; }
+  await api('/api/manual-jobs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      agent_label: $('mjAgent').value, source_label: $('mjSource').value,
+      download_count: count, mode: $('mjMode').value,
+      interval_type: $('mjIntervalType').value, interval_seconds: secs,
+      start_at: $('mjStartAt').value || null,
+    }),
+  });
+  closeModal('manualModal');
+  loadManualJobs();
+}
+
+// ── Quota / Metrics ────────────────────────────────────────────────────────
 async function refreshMetrics() {
-  const data = await fetch('/api/metrics').then(r=>r.json()).catch(()=>[]);
-  const tb = $('metricsBody');
-  if(!data.length){ tb.innerHTML='<tr><td colspan="5" class="empty">No sources.</td></tr>'; return; }
-  tb.innerHTML = data.map(m=>`<tr>
-    <td>${m.label}${m.is_monitor?'<span class="badge">monitor</span>':''}</td>
-    <td class="dim">${m.is_monitor?'monitor':'source'}</td>
-    <td class="${m.reachable?'up':'dn'}">${m.reachable?'● UP':'✕ DOWN'}</td>
-    <td class="rx">${m.reachable?m.rx_gb.toFixed(2):'—'}</td>
-    <td class="tx">${m.reachable?m.tx_gb.toFixed(2):'—'}</td>
+  const data = await api('/api/metrics').catch(() => []);
+  const tb   = $('metricsBody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">No sources.</td></tr>'; return; }
+  tb.innerHTML = data.map(m => `<tr>
+    <td>${m.label}${m.is_monitor ? '<span class="badge">monitor</span>' : ''}</td>
+    <td class="dim">${m.is_monitor ? 'monitor' : 'source'}</td>
+    <td class="${m.reachable ? 'up' : 'dn'}">${m.reachable ? '● UP' : '✕ DOWN'}</td>
+    <td class="rx">${m.reachable ? m.rx_gb.toFixed(2) : '—'}</td>
+    <td class="tx">${m.reachable ? m.tx_gb.toFixed(2) : '—'}</td>
   </tr>`).join('');
 }
 
-// ── Agent quota cards ──────────────────────────────────────────────────────
 async function refreshAgentQuota() {
-  const data = await fetch('/api/agent-quota').then(r=>r.json()).catch(()=>[]);
+  const data = await api('/api/agent-quota').catch(() => []);
   const grid = $('quotaCards');
-  if(!data.length){ grid.innerHTML='<div class="empty">No agents configured.</div>'; return; }
+  if (!data.length) { grid.innerHTML = '<div class="empty">No agents.</div>'; return; }
   grid.innerHTML = data.map(a => {
     const hasQ = a.has_quota && a.monthly_allowed_gb > 0;
-    const usedPct = hasQ ? Math.min(100, a.monthly_used_gb / a.monthly_allowed_gb * 100) : 0;
-    const cls = usedPct > 90 ? 'q-crit' : usedPct > 70 ? 'q-warn' : 'q-ok';
+    const pct  = hasQ ? Math.min(100, a.monthly_used_gb / a.monthly_allowed_gb * 100) : 0;
+    const cls  = pct > 90 ? 'q-crit' : pct > 70 ? 'q-warn' : 'q-ok';
     return `<div class="panel" style="margin-bottom:0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <div class="card-name">${a.label}</div>
-          <div class="card-sub">${a.host} · ${a.daily_limit_gb} GB/day</div>
-        </div>
-        ${hasQ ? `<span style="font-size:11px;color:${usedPct>90?'var(--red)':usedPct>70?'var(--yellow)':'var(--green)'}">${usedPct.toFixed(1)}%</span>` : '<span class="dim">no quota</span>'}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div><div class="card-name">${a.label}</div><div class="card-sub">${a.host}</div></div>
+        ${hasQ ? `<span style="font-size:11px;color:${pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--yellow)' : 'var(--green)'}">${pct.toFixed(1)}%</span>` : '<span class="dim">no quota</span>'}
       </div>
       ${hasQ ? `
-      <div class="quota-track" style="margin-bottom:10px"><div class="quota-fill ${cls}" style="width:${usedPct.toFixed(1)}%"></div></div>
+      <div class="quota-track" style="margin-bottom:10px"><div class="quota-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center">
         <div><div style="font-size:14px;font-weight:700;color:var(--text)">${a.monthly_allowed_gb.toFixed(1)} GB</div><div class="cs-label">Allowed</div></div>
         <div><div style="font-size:14px;font-weight:700;color:var(--accent)">${a.monthly_used_gb.toFixed(2)} GB</div><div class="cs-label">Used</div></div>
-        <div><div style="font-size:14px;font-weight:700;color:${usedPct>90?'var(--red)':'var(--green)'}">${a.monthly_remaining_gb.toFixed(2)} GB</div><div class="cs-label">Remaining</div></div>
-      </div>` : '<div class="dim" style="font-size:11px">No monthly limit configured.</div>'}
+        <div><div style="font-size:14px;font-weight:700;color:${pct > 90 ? 'var(--red)' : 'var(--green)'}">${a.monthly_remaining_gb.toFixed(2)} GB</div><div class="cs-label">Remaining</div></div>
+      </div>` : '<div class="dim" style="font-size:11px">No monthly limit set.</div>'}
     </div>`;
   }).join('');
 }
@@ -701,39 +869,284 @@ async function refreshQuotaPage() {
 
 // ── History ────────────────────────────────────────────────────────────────
 async function loadHistory() {
-  const rows = await fetch('/api/monthly-history').then(r=>r.json()).catch(()=>[]);
-  const tb = $('historyBody');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="3" class="empty">No history yet.</td></tr>'; return; }
-  tb.innerHTML = rows.map(r=>`<tr>
-    <td>${r.year_month}</td><td>${r.agent_label}</td>
-    <td class="rx">${(r.downloaded_bytes/1024**3).toFixed(3)} GB</td>
+  const rows = await api('/api/monthly-history').catch(() => []);
+  const tb   = $('historyBody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="3" class="empty">No history.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r => `<tr><td>${r.year_month}</td><td>${r.agent_label}</td><td class="rx">${(r.downloaded_bytes / 1024 ** 3).toFixed(3)} GB</td></tr>`).join('');
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+const _settingIds = [
+  ['scheduler.days',              's_scheduler_days'],
+  ['scheduler.daily_variance',    's_scheduler_daily_variance'],
+  ['scheduler.schedule_weights',  's_scheduler_schedule_weights'],
+  ['scheduler.recreate_plan',     's_scheduler_recreate_plan'],
+  ['download.speed_cap',          's_download_speed_cap'],
+  ['download.pause_probability',  's_download_pause_probability'],
+  ['download.pause_range',        's_download_pause_range'],
+  ['download.max_concurrent',     's_download_max_concurrent'],
+  ['download.max_retries',        's_download_max_retries'],
+  ['download.retry_delay_range',  's_download_retry_delay_range'],
+  ['network.verify_ssl',          's_network_verify_ssl'],
+  ['network.connection_test_url', 's_network_connection_test_url'],
+  ['ui.auto_refresh_seconds',     's_ui_auto_refresh_seconds'],
+];
+
+async function loadSettings() {
+  const s = await api('/api/settings').catch(() => ({}));
+  _settingIds.forEach(([key, id]) => {
+    const el = $(id.replace(/\./g, '_'));
+    if (el) el.value = s[key] ?? '';
+  });
+}
+
+async function saveSettings() {
+  const body = {};
+  _settingIds.forEach(([key, id]) => {
+    const el = $(id.replace(/\./g, '_'));
+    if (el) body[key] = el.value;
+  });
+  try {
+    await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const secs = parseInt(body['ui.auto_refresh_seconds'] || '10');
+    $('refreshSelect').value = secs;
+    setRefreshInterval(secs);
+    showToast('Settings saved. Changes take effect on the next cycle.');
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function loadSettingsPage() {
+  await Promise.all([loadAgentsTable(), loadSourcesTable(), loadMonitorsTable(), loadSettings()]);
+}
+
+// ── Agents CRUD ────────────────────────────────────────────────────────────
+async function loadAgentsTable() {
+  const rows = await api('/api/agents').catch(() => []);
+  const tb   = $('agentsTable');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">No agents.</td></tr>'; return; }
+  tb.innerHTML = rows.map(a => `<tr>
+    <td><strong>${a.label}</strong></td><td class="dim">${a.host}</td><td class="dim">${a.port}</td>
+    <td class="dim">${a.user}</td><td>${a.daily_limit_gb}</td><td>${a.monthly_limit_gb || '—'}</td>
+    <td>${(a.usage_quota_pct * 100).toFixed(0)}%</td>
+    <td><span class="pill ${a.enabled ? 'p-done' : 'p-failed'}">${a.enabled ? 'yes' : 'no'}</span></td>
+    <td style="display:flex;gap:5px">
+      <button class="btn btn-sm" onclick='openAgentModal(${JSON.stringify(a)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmAction('Delete agent &quot;${a.label}&quot;?',()=>deleteAgent('${a.label}'))">Del</button>
+    </td>
   </tr>`).join('');
 }
 
-// ── Logs ───────────────────────────────────────────────────────────────────
-let lastLogCount=0;
-async function refreshLogs() {
-  const d = await fetch('/api/logs').then(r=>r.json()).catch(()=>({lines:[]}));
-  if(d.lines.length===lastLogCount) return;
-  lastLogCount=d.lines.length;
-  const box=$('logBox');
-  box.innerHTML=d.lines.map(l=>{
-    let c='info';
-    if(l.includes('| WARNING '))c='warn';
-    else if(l.includes('| ERROR '))c='error';
-    else if(l.includes('| DEBUG '))c='debug';
-    return `<div class="ll ${c}">${l}</div>`;
-  }).join('');
-  if($('autoScrollChk').checked) box.scrollTop=box.scrollHeight;
+function openAgentModal(agent = null) {
+  const isNew = !agent;
+  $('agentModalTitle').textContent = isNew ? 'Add Agent' : 'Edit Agent';
+  $('aOrigLabel').value   = agent ? agent.label : '';
+  $('aLabel').value       = agent ? agent.label : '';
+  $('aLabel').disabled    = !isNew;
+  $('aHost').value        = agent ? agent.host : '';
+  $('aPort').value        = agent ? agent.port : 22;
+  $('aUser').value        = agent ? agent.user : '';
+  $('aPass').value        = '';  // never pre-fill password
+  $('aDailyGb').value     = agent ? agent.daily_limit_gb : 1;
+  $('aMonthlyGb').value   = agent ? agent.monthly_limit_gb : 0;
+  $('aQuotaPct').value    = agent ? agent.usage_quota_pct : 1.0;
+  $('aEnabled').value     = agent ? (agent.enabled ? '1' : '0') : '1';
+  $('aStartNowWrap').style.display = isNew ? 'block' : 'none';
+  if (isNew) $('aStartNow').checked = false;
+  $('aTestBtn').style.display = 'block';
+  $('aTestResult').className = 'test-result';
+  $('aTestResult').textContent = '';
+  clearErrs('aLabelErr', 'aHostErr', 'aUserErr', 'aPassErr');
+  $('agentModal').style.display = 'flex';
 }
 
-// ── Refresh all ────────────────────────────────────────────────────────────
-async function refreshAll() { await Promise.all([loadState(), refreshMetrics(), refreshAgentQuota()]); }
+async function testAgentInModal() {
+  const label = $('aOrigLabel').value || $('aLabel').value;
+  if (!label) { showErr('aLabelErr', 'Save the agent first to test'); return; }
+  const tr = $('aTestResult');
+  tr.className = 'test-result'; tr.textContent = 'Testing…'; tr.style.display = 'block';
+  const r = await api(`/api/agents/${encodeURIComponent(label)}/test`, { method: 'POST' }).catch(e => ({ ok: false, message: e.message }));
+  tr.className = 'test-result ' + (r.ok ? 'ok' : 'fail');
+  tr.textContent = r.message;
+}
 
+async function saveAgent() {
+  const isNew = !$('aOrigLabel').value;
+  const label = isNew ? $('aLabel').value : $('aOrigLabel').value;
+  let valid = true;
+  if (isNew) valid = validateLabel($('aLabel').value, 'aLabelErr') && valid;
+  valid = validateRequired($('aHost').value, 'aHostErr') && valid;
+  valid = validateRequired($('aUser').value, 'aUserErr') && valid;
+  if (isNew || $('aPass').value) valid = validateRequired($('aPass').value, 'aPassErr') && valid;
+  if (!valid) return;
+
+  try {
+    const body = {
+      label: $('aLabel').value, host: $('aHost').value, port: +$('aPort').value,
+      user: $('aUser').value, password: $('aPass').value,
+      daily_limit_gb: +$('aDailyGb').value, monthly_limit_gb: +$('aMonthlyGb').value,
+      usage_quota_pct: +$('aQuotaPct').value, enabled: +$('aEnabled').value,
+      start_now: isNew && $('aStartNow').checked,
+    };
+    await api(isNew ? '/api/agents' : `/api/agents/${encodeURIComponent(label)}`,
+              { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    // Sync state immediately so overview updates
+    await api('/api/state/sync', { method: 'POST' });
+    closeModal('agentModal');
+    loadAgentsTable();
+    refreshAll();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteAgent(label) {
+  await api(`/api/agents/${encodeURIComponent(label)}`, { method: 'DELETE' });
+  await api('/api/state/sync', { method: 'POST' });
+  loadAgentsTable();
+  refreshAll();
+}
+
+// ── Sources CRUD ───────────────────────────────────────────────────────────
+async function loadSourcesTable() {
+  const rows = await api('/api/sources').catch(() => []);
+  const tb   = $('sourcesTable');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">No sources.</td></tr>'; return; }
+  tb.innerHTML = rows.map(s => `<tr>
+    <td><strong>${s.label}</strong></td>
+    <td class="dim" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.download_url}</td>
+    <td class="dim" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.metric_url || '—'}</td>
+    <td><span class="pill ${s.enabled ? 'p-done' : 'p-failed'}">${s.enabled ? 'yes' : 'no'}</span></td>
+    <td style="display:flex;gap:5px">
+      <button class="btn btn-sm" onclick='openSourceModal(${JSON.stringify(s)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmAction('Delete source &quot;${s.label}&quot;?',()=>deleteSource('${s.label}'))">Del</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openSourceModal(source = null) {
+  $('sourceModalTitle').textContent = source ? 'Edit Source' : 'Add Source';
+  $('sOrigLabel').value    = source ? source.label : '';
+  $('sLabel').value        = source ? source.label : '';
+  $('sLabel').disabled     = !!source;
+  $('sDownloadUrl').value  = source ? source.download_url : '';
+  $('sMetricUrl').value    = source ? source.metric_url : '';
+  $('sEnabled').value      = source ? (source.enabled ? '1' : '0') : '1';
+  clearErrs('sLabelErr', 'sDownloadUrlErr', 'sMetricUrlErr');
+  $('sourceModal').style.display = 'flex';
+}
+
+async function saveSource() {
+  const isNew = !$('sOrigLabel').value;
+  const label = isNew ? $('sLabel').value : $('sOrigLabel').value;
+  let valid   = true;
+  if (isNew) valid = validateLabel($('sLabel').value, 'sLabelErr') && valid;
+  valid = validateUrl($('sDownloadUrl').value, 'sDownloadUrlErr') && valid;
+  const mu = $('sMetricUrl').value;
+  if (mu) valid = validateUrl(mu, 'sMetricUrlErr', false) && valid;
+  if (!valid) return;
+  try {
+    await api(isNew ? '/api/sources' : `/api/sources/${encodeURIComponent(label)}`,
+              { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: $('sLabel').value, download_url: $('sDownloadUrl').value, metric_url: mu, enabled: +$('sEnabled').value }) });
+    closeModal('sourceModal');
+    loadSourcesTable();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteSource(label) {
+  await api(`/api/sources/${encodeURIComponent(label)}`, { method: 'DELETE' });
+  loadSourcesTable();
+}
+
+// ── Monitors CRUD ──────────────────────────────────────────────────────────
+async function loadMonitorsTable() {
+  const rows = await api('/api/monitors').catch(() => []);
+  const tb   = $('monitorsTable');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No monitors.</td></tr>'; return; }
+  tb.innerHTML = rows.map(m => `<tr>
+    <td><strong>${m.label}</strong></td>
+    <td class="dim" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${m.metric_url}</td>
+    <td><span class="pill ${m.enabled ? 'p-done' : 'p-failed'}">${m.enabled ? 'yes' : 'no'}</span></td>
+    <td style="display:flex;gap:5px">
+      <button class="btn btn-sm" onclick='openMonitorModal(${JSON.stringify(m)})'>Edit</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmAction('Delete monitor &quot;${m.label}&quot;?',()=>deleteMonitor('${m.label}'))">Del</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openMonitorModal(mon = null) {
+  $('monitorModalTitle').textContent = mon ? 'Edit Monitor' : 'Add Monitor';
+  $('mOrigLabel').value  = mon ? mon.label : '';
+  $('mLabel').value      = mon ? mon.label : '';
+  $('mLabel').disabled   = !!mon;
+  $('mMetricUrl').value  = mon ? mon.metric_url : '';
+  $('mEnabled').value    = mon ? (mon.enabled ? '1' : '0') : '1';
+  clearErrs('mLabelErr', 'mMetricUrlErr');
+  $('monitorModal').style.display = 'flex';
+}
+
+async function saveMonitor() {
+  const isNew = !$('mOrigLabel').value;
+  const label = isNew ? $('mLabel').value : $('mOrigLabel').value;
+  let valid   = true;
+  if (isNew) valid = validateLabel($('mLabel').value, 'mLabelErr') && valid;
+  valid = validateUrl($('mMetricUrl').value, 'mMetricUrlErr') && valid;
+  if (!valid) return;
+  try {
+    await api(isNew ? '/api/monitors' : `/api/monitors/${encodeURIComponent(label)}`,
+              { method: isNew ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: $('mLabel').value, metric_url: $('mMetricUrl').value, enabled: +$('mEnabled').value }) });
+    closeModal('monitorModal');
+    loadMonitorsTable();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteMonitor(label) {
+  await api(`/api/monitors/${encodeURIComponent(label)}`, { method: 'DELETE' });
+  loadMonitorsTable();
+}
+
+// ── Logs ───────────────────────────────────────────────────────────────────
+let lastLogCount = 0;
+async function refreshLogs() {
+  const d = await api('/api/logs').catch(() => ({ lines: [] }));
+  if (d.lines.length === lastLogCount) return;
+  lastLogCount = d.lines.length;
+  const box = $('logBox');
+  box.innerHTML = d.lines.map(l => {
+    let c = 'info';
+    if (l.includes('| WARNING ')) c = 'warn';
+    else if (l.includes('| ERROR ')) c = 'error';
+    else if (l.includes('| DEBUG ')) c = 'debug';
+    return `<div class="ll ${c}">${l}</div>`;
+  }).join('');
+  if ($('autoScrollChk').checked) box.scrollTop = box.scrollHeight;
+}
+
+// ── Toast notification ─────────────────────────────────────────────────────
+function showToast(msg, isError = false) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    Object.assign(t.style, {
+      position: 'fixed', bottom: '20px', right: '20px', zIndex: '9999',
+      padding: '10px 18px', borderRadius: '8px', fontSize: '12px',
+      fontFamily: "'JetBrains Mono',monospace", maxWidth: '320px',
+      transition: 'opacity .3s',
+    });
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = isError ? 'rgba(244,63,94,.15)' : 'rgba(16,185,129,.15)';
+  t.style.border      = isError ? '1px solid var(--red)' : '1px solid var(--green)';
+  t.style.color       = isError ? 'var(--red)' : 'var(--green)';
+  t.style.opacity     = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
 refreshAll();
-setInterval(loadState,  10000);
 setInterval(refreshLogs, 5000);
-setInterval(refreshMetrics, 60000);
 </script>
 </body>
 </html>
