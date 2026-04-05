@@ -30,9 +30,12 @@ log = get_logger("agent")
 # Connection test
 
 async def test_agent_connection(agent: AgentConfig, cfg: Config) -> tuple[bool, str]:
+    log.info("Connection test started | agent=%s | host=%s", agent.label, agent.host)
+
     if agent.is_local:
         try:
             import httpx
+            log.info("Testing local download | agent=%s | url=%s", agent.label, cfg.connection_test_url)
             async with httpx.AsyncClient(verify=cfg.verify_ssl, timeout=15.0) as client:
                 async with client.stream("GET", cfg.connection_test_url) as resp:
                     resp.raise_for_status()
@@ -41,12 +44,17 @@ async def test_agent_connection(agent: AgentConfig, cfg: Config) -> tuple[bool, 
                         downloaded += len(chunk)
                         if downloaded >= 10 * 1024 * 1024:
                             break
-            return True, f"localhost – download OK ({downloaded // 1024 // 1024} MB received)"
+            msg = f"localhost – download OK ({downloaded // 1024 // 1024} MB received)"
+            log.info("Connection test passed | agent=%s | result=%s", agent.label, msg)
+            return True, msg
         except Exception as exc:
             error = repr(exc) if not str(exc).strip() else str(exc)
-            return False, f"localhost – download failed: {error}"
+            msg = f"localhost – download failed: {error}"
+            log.warning("Connection test failed | agent=%s | error=%s", agent.label, error)
+            return False, msg
 
     try:
+        log.info("Testing SSH connection | agent=%s | host=%s:%d", agent.label, agent.host, agent.port)
         async with asyncssh.connect(
             host=agent.host,
             port=agent.port,
@@ -55,19 +63,26 @@ async def test_agent_connection(agent: AgentConfig, cfg: Config) -> tuple[bool, 
             known_hosts=None,
             connect_timeout=60,
         ) as conn:
-            no_check = "--no-check-certificate" if not cfg.verify_ssl else ""
+            no_check = "--insecure" if not cfg.verify_ssl else ""
+            log.info("SSH connected | agent=%s | running download test | url=%s", agent.label, cfg.connection_test_url)
             proc = await conn.run(
-                f"wget -q --limit-rate=5m {no_check} -O /dev/null '{cfg.connection_test_url}' 2>&1 && echo OK",
+                f"curl -s {no_check} --max-time 30 -o /dev/null -r 0-10485760 '{cfg.connection_test_url}' && echo OK",
                 timeout=60,
             )
             if proc.returncode == 0:
-                return True, "SSH OK – download test passed"
+                msg = "SSH OK – download test passed"
+                log.info("Connection test passed | agent=%s | result=%s", agent.label, msg)
+                return True, msg
             else:
                 error = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
-                return False, f"SSH OK – download failed: {error}"
+                msg = f"SSH OK – download failed: {error}"
+                log.warning("Connection test failed | agent=%s | error=%s", agent.label, error)
+                return False, msg
     except Exception as exc:
         error = repr(exc) if not str(exc).strip() else str(exc)
-        return False, f"SSH failed: {error}"
+        msg = f"SSH failed: {error}"
+        log.warning("Connection test failed | agent=%s | error=%s", agent.label, error)
+        return False, msg
 
 
 # Remote download via SSH
