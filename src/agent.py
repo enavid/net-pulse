@@ -102,10 +102,10 @@ async def _run_remote_download(
                     log.warning("SSH download failed | agent=%s | attempt=%d/%d | error=%s",
                                 agent.label, attempt, max_retries, result.error)
         except Exception as exc:
-            result.error = str(exc)
+            result.error = repr(exc) if not str(exc).strip() else str(exc)
             result.duration_seconds = time.monotonic() - start
             log.warning("SSH connection error | agent=%s | attempt=%d/%d | error=%s",
-                        agent.label, attempt, max_retries, exc)
+                        agent.label, attempt, max_retries, result.error)
 
     result.attempts = attempt
     return result
@@ -120,7 +120,7 @@ async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Conf
 
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # ── Fix #1: Check for existing plan, delete stale pending events ──────────
+    # Check for existing plan, delete stale pending events
     storage.delete_stale_pending(today, agent.label)
 
     existing = [r for r in storage.get_events_for_date(today) if r["agent_label"] == agent.label]
@@ -135,7 +135,7 @@ async def run_agent(agent: AgentConfig, sources: List[DownloadSource], cfg: Conf
         log.info("Agent finished daily cycle | agent=%s", agent.label)
         return
 
-    # ── Build new plan ────────────────────────────────────────────────────────
+    # Build new plan 
     variance     = 1.0 + random.uniform(-cfg.daily_variance, cfg.daily_variance)
     target_bytes = int(agent.daily_limit_gb * 1024 ** 3 * variance)
     approx_size  = 1 * 1024 ** 3
