@@ -2,14 +2,12 @@
 src/config.py – Two-layer configuration.
 
   SystemConfig  : loaded once from config.toml (panel auth, log, port).
-                  Never changes at runtime.
-  RuntimeConfig : loaded from DB before every cycle (agents, sources,
-                  monitors, scheduler/download settings).
-                  Can be updated from the UI without restarting.
+  RuntimeConfig : loaded from DB before every cycle — changes without restart.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -25,6 +23,7 @@ class DownloadSource:
     label: str
     download_url: str
     metric_url: str
+
 
 @dataclass
 class MonitorSource:
@@ -42,6 +41,13 @@ class AgentConfig:
     daily_limit_gb: float
     monthly_limit_gb: float
     usage_quota_pct: float
+    ssh_key: str = ""           # PEM private key content
+    ssh_key_name: str = ""      # reference to named key in ssh_keys table
+    auth_type: str = "password" # 'password' or 'key'
+    jump_host: str = ""         # ProxyJump host
+    jump_port: int = 22
+    jump_user: str = ""
+    jump_key_name: str = ""     # named key for jump host
 
     @property
     def monthly_allowed_gb(self) -> float:
@@ -51,10 +57,13 @@ class AgentConfig:
     def is_local(self) -> bool:
         return self.host == "localhost"
 
+    @property
+    def has_jump(self) -> bool:
+        return bool(self.jump_host)
+
 
 @dataclass
 class SystemConfig:
-    """Static config loaded from config.toml — panel auth and basic infra only."""
     panel_host: str
     panel_port: int
     secret_key: str
@@ -66,19 +75,15 @@ class SystemConfig:
 
 @dataclass
 class RuntimeConfig:
-    """Dynamic config loaded from DB — can change between cycles."""
-    # Entities
     agents: List[AgentConfig]
     download_sources: List[DownloadSource]
     monitors: List[MonitorSource]
 
-    # Scheduler
     total_days: int
     daily_variance: float
     schedule_weights: List[float]
     recreate_plan: bool
 
-    # Download behaviour
     download_speed_cap: int
     download_pause_probability: float
     download_pause_range: Tuple[int, int]
@@ -86,14 +91,12 @@ class RuntimeConfig:
     download_max_retries: int
     download_retry_delay_range: Tuple[int, int]
 
-    # Network
     verify_ssl: bool
     connection_test_url: str
-
-    # UI
     auto_refresh_seconds: int
+    ui_timezone: str
+    ui_calendar: str
 
-    # System (copied from SystemConfig for convenience)
     panel_host: str = "127.0.0.1"
     panel_port: int = 7070
     secret_key: str = "change-me"
@@ -107,27 +110,26 @@ class RuntimeConfig:
 
 def _load_toml(path: Path) -> dict:
     try:
-        import tomllib  # type: ignore
+        import tomllib
         with open(path, "rb") as fh:
             return tomllib.load(fh)
     except ImportError:
         pass
     try:
-        import tomli  # type: ignore
+        import tomli
         with open(path, "rb") as fh:
             return tomli.load(fh)
     except ImportError:
-        print("[ERROR] Python < 3.11 detected. Install tomli: pip install tomli")
+        print("[ERROR] Install tomli: pip install tomli")
         sys.exit(1)
 
 
 def load_system_config(path: Path = _CONFIG_FILE) -> SystemConfig:
-    """Load static system config from config.toml."""
     if not path.exists():
         print(f"[ERROR] Config file not found: {path}")
         sys.exit(1)
-    data    = _load_toml(path)
-    panel   = data.get("panel", {})
+    data     = _load_toml(path)
+    panel    = data.get("panel", {})
     logging_ = data.get("logging", {})
     return SystemConfig(
         panel_host=panel.get("host", "127.0.0.1"),
@@ -140,11 +142,18 @@ def load_system_config(path: Path = _CONFIG_FILE) -> SystemConfig:
     )
 
 
+def load_total_days_from_toml(path: Path = _CONFIG_FILE) -> int:
+    """Read scheduler.days from config.toml for initial startup."""
+    if not path.exists():
+        return 0
+    data = _load_toml(path)
+    env  = os.environ.get("NETPULSE_DAYS", "").strip()
+    if env.isdigit():
+        return int(env)
+    return int(data.get("scheduler", {}).get("days", 0))
+
+
 def seed_db_from_toml(path: Path = _CONFIG_FILE) -> None:
-    """
-    On first run: read agents/sources/monitors/settings from config.toml
-    and insert them into DB (only if DB tables are empty).
-    """
     from src import storage as st
 
     if not path.exists():
@@ -152,15 +161,12 @@ def seed_db_from_toml(path: Path = _CONFIG_FILE) -> None:
 
     data = _load_toml(path)
 
-    # Seed settings only if table is empty
-    existing = st.get_all_settings()
-    if not existing:
+    if not st.get_all_settings():
         st.seed_default_settings()
         sched   = data.get("scheduler", {})
         dl      = data.get("download", {})
         network = data.get("network", {})
-
-        overrides = {
+        for k, v in {
             "scheduler.days":              str(sched.get("days", 0)),
             "scheduler.daily_variance":    str(sched.get("daily_variance", 0.20)),
             "scheduler.schedule_weights":  ",".join(str(w) for w in sched.get("schedule_weights", [0.05, 0.30, 0.35, 0.30])),
@@ -173,26 +179,33 @@ def seed_db_from_toml(path: Path = _CONFIG_FILE) -> None:
             "download.retry_delay_range":  ",".join(str(v) for v in dl.get("retry_delay_range", [30, 120])),
             "network.verify_ssl":          str(network.get("verify_ssl", False)).lower(),
             "network.connection_test_url": network.get("connection_test_url", "https://speed.hetzner.de/10MB.bin"),
-        }
-        for k, v in overrides.items():
+        }.items():
             st.set_setting(k, v)
 
-    # Seed agents only if table is empty
     if not st.get_agents(enabled_only=False):
         for a in data.get("agents", []):
+            # Support ssh_key in config.toml
+            ssh_key   = a.get("ssh_key", "")
+            auth_type = "key" if ssh_key else "password"
             st.upsert_agent({
                 "label":            a["label"],
                 "host":             a["host"],
                 "port":             int(a.get("port", 22)),
                 "user":             a["user"],
-                "password":         a["password"],
+                "password":         a.get("password", ""),
+                "ssh_key":          ssh_key,
+                "ssh_key_name":     "",
+                "auth_type":        auth_type,
+                "jump_host":        a.get("jump_host", ""),
+                "jump_port":        int(a.get("jump_port", 22)),
+                "jump_user":        a.get("jump_user", ""),
+                "jump_key_name":    "",
                 "daily_limit_gb":   float(a["daily_limit_gb"]),
                 "monthly_limit_gb": float(a.get("monthly_limit_gb", 0.0)),
                 "usage_quota_pct":  float(a.get("usage_quota_pct", 1.0)),
                 "enabled":          1,
             })
 
-    # Seed sources only if table is empty
     if not st.get_sources(enabled_only=False):
         for s in data.get("sources", []):
             st.upsert_source({
@@ -202,7 +215,6 @@ def seed_db_from_toml(path: Path = _CONFIG_FILE) -> None:
                 "enabled":      1,
             })
 
-    # Seed monitors only if table is empty
     if not st.get_monitors(enabled_only=False):
         for m in data.get("monitors", []):
             st.upsert_monitor({
@@ -213,7 +225,6 @@ def seed_db_from_toml(path: Path = _CONFIG_FILE) -> None:
 
 
 def load_runtime_config(sys_cfg: SystemConfig) -> RuntimeConfig:
-    """Load dynamic config from DB."""
     from src import storage as st
 
     settings = st.get_all_settings()
@@ -228,13 +239,31 @@ def load_runtime_config(sys_cfg: SystemConfig) -> RuntimeConfig:
     def _weights(key: str) -> List[float]:
         return [float(x) for x in s(key, "0.05,0.30,0.35,0.30").split(",")]
 
+    # Resolve ssh key content for each agent
+    def _resolve_key(row) -> str:
+        """Return PEM key: inline key takes priority, then named key from ssh_keys table."""
+        inline = row["ssh_key"] if row["ssh_key"] else ""
+        if inline:
+            return inline
+        named = row["ssh_key_name"] if row["ssh_key_name"] else ""
+        if named:
+            return st.get_ssh_key_private(named)
+        return ""
+
     agents = [
         AgentConfig(
             label=r["label"], host=r["host"], port=r["port"],
-            user=r["user"], password=r["password"],
+            user=r["user"], password=r["password"] or "",
             daily_limit_gb=r["daily_limit_gb"],
             monthly_limit_gb=r["monthly_limit_gb"],
             usage_quota_pct=r["usage_quota_pct"],
+            ssh_key=_resolve_key(r),
+            ssh_key_name=r["ssh_key_name"] or "",
+            auth_type=r["auth_type"] or "password",
+            jump_host=r["jump_host"] or "",
+            jump_port=r["jump_port"] or 22,
+            jump_user=r["jump_user"] or "",
+            jump_key_name=r["jump_key_name"] or "",
         )
         for r in st.get_agents(enabled_only=True)
     ]
@@ -250,9 +279,7 @@ def load_runtime_config(sys_cfg: SystemConfig) -> RuntimeConfig:
     ]
 
     return RuntimeConfig(
-        agents=agents,
-        download_sources=sources,
-        monitors=monitors,
+        agents=agents, download_sources=sources, monitors=monitors,
         total_days=int(s("scheduler.days", "0")),
         daily_variance=float(s("scheduler.daily_variance", "0.20")),
         schedule_weights=_weights("scheduler.schedule_weights"),
@@ -266,11 +293,10 @@ def load_runtime_config(sys_cfg: SystemConfig) -> RuntimeConfig:
         verify_ssl=s("network.verify_ssl", "false").lower() == "true",
         connection_test_url=s("network.connection_test_url", "https://speed.hetzner.de/10MB.bin"),
         auto_refresh_seconds=int(s("ui.auto_refresh_seconds", "10")),
-        panel_host=sys_cfg.panel_host,
-        panel_port=sys_cfg.panel_port,
+        ui_timezone=s("ui.timezone", "Asia/Tehran"),
+        ui_calendar=s("ui.calendar", "gregorian"),
+        panel_host=sys_cfg.panel_host, panel_port=sys_cfg.panel_port,
         secret_key=sys_cfg.secret_key,
-        panel_username=sys_cfg.panel_username,
-        panel_password=sys_cfg.panel_password,
-        log_level=sys_cfg.log_level,
-        log_file=sys_cfg.log_file,
+        panel_username=sys_cfg.panel_username, panel_password=sys_cfg.panel_password,
+        log_level=sys_cfg.log_level, log_file=sys_cfg.log_file,
     )

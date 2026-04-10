@@ -1,7 +1,7 @@
 services:
   netpulse:
     #build: .
-    image: netpulse:1.1.0
+    image: netpulse:1.2.0
     container_name: netpulse
     restart: unless-stopped
 
@@ -14,7 +14,7 @@ services:
     # Map it to localhost on the host so SSH tunnel still works:
     #   ssh -L 10909:127.0.0.1:10909 user@server
     ports:
-      - "10909:10909"
+      - "127.0.0.1:10909:10909"
 
     environment:
       - TZ=Asia/Tehran
