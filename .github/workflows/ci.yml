@@ -1,6 +1,11 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v1.2.0)'
+        required: true
   push:
     tags:
       - "v*"
@@ -28,5 +33,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:${{ github.event.inputs.tag || github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
